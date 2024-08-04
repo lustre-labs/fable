@@ -5,7 +5,6 @@ import gleam/pair
 import lustre.{type App}
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
-import lustre/element/html
 
 ///
 ///

@@ -16,7 +16,7 @@ internal_modules = ["fable/middleware"]
 
 [dependencies]
 gleam_stdlib = ">= 0.34.0 and < 2.0.0"
-lustre = ">= 4.3.1 and < 5.0.0"
+lustre = ">= 4.3.2 and < 5.0.0"
 justin = ">= 1.0.1 and < 2.0.0"
 modem = ">= 2.0.0 and < 3.0.0"
 funtil = ">= 1.0.0 and < 2.0.0"

@@ -81,7 +81,12 @@ pub fn register(
   ))
 
   use _ <- result.try(lustre.register(
-    lustre.component(init: scene_init, update: scene_update, options:, view:),
+    lustre.component(
+      init: scene_init,
+      update: scene_update,
+      options:,
+      view: scene_view(_, view),
+    ),
     scene,
   ))
 
@@ -159,6 +164,42 @@ fn scene_update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       ),
     )
   }
+}
+
+fn scene_view(model: Model, view: fn(Model) -> Element(Msg)) -> Element(Msg) {
+  element.fragment([
+    html.div([], [view(model)]),
+    html.style(
+      [],
+      "
+      /* We want to isolate the component's styles completely from the page.
+         Shadow DOM gets us most of the way, but it allows certain inherited
+         styles to pierce and we want to undo that.
+
+         There's no built-in way to do this easily but we employ a little trick
+         here to get around it. Setting everything to `initial` will nuke all
+         styles back to their spec-defined values. This is **not** the same as
+         the UA defaults, so for example now all `<p>` elements are suddenly
+         `display: inline` for whatever reason...
+      */
+      :host {
+        all: initial !important;
+      }
+
+      /* ...so we introduce one level of nesting and here we set everything to
+         `revert`. This reverts uninherited styles to the UA defaults - which we
+         want - and leaves inherited styles alone, but those have already been
+         reset back to spec defaults by the previous rule.
+
+         Introducing this one layer of nesting is a bit annoying, but it's neat
+         that this works!
+      */
+      :host > * {
+        all: revert !important;
+      }
+      ",
+    ),
+  ])
 }
 
 // UTILS -----------------------------------------------------------------------

@@ -1,1 +1,0 @@
--record(remove, {kind :: integer(), from :: integer(), count :: integer()}).

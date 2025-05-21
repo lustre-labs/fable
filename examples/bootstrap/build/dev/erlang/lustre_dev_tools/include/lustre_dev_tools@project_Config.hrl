@@ -1,1 +1,0 @@
--record(config, {name :: binary(), toml :: gleam@dict:dict(binary(), tom:toml())}).

@@ -1,1 +1,0 @@
--record(model, {lookup :: gleam@dict:dict(integer(), lustre_fable@value:value())}).

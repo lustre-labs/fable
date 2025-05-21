@@ -1,1 +1,0 @@
--record(story, {chapter :: binary(), story :: binary()}).

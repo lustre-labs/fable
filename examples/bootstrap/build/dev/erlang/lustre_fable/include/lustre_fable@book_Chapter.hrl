@@ -1,1 +1,0 @@
--record(chapter, {title :: binary(), stories :: list(lustre_fable@story:story())}).

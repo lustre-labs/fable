@@ -1,4 +1,4 @@
-name = "fable"
+name = "lustre_fable"
 version = "1.0.0"
 
 # Fill out these fields if you intend to generate HTML documentation or publish
@@ -21,10 +21,14 @@ justin = ">= 1.0.1 and < 2.0.0"
 lustre = ">= 5.1.0 and < 6.0.0"
 modem = ">= 2.0.0 and < 3.0.0"
 gleam_regexp = ">= 1.1.1 and < 2.0.0"
+rsvp = ">= 1.1.0 and < 2.0.0"
 
 [dev-dependencies]
 gleeunit = ">= 1.0.0 and < 2.0.0"
 glailglind = ">= 2.0.0 and < 3.0.0"
+simplifile = ">= 2.2.1 and < 3.0.0"
+cog = ">= 2.0.3 and < 3.0.0"
+shellout = ">= 1.7.0 and < 2.0.0"
 
 [tailwind]
 args = [

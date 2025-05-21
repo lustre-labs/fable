@@ -1,4 +1,4 @@
-//
+// IMPORTS ---------------------------------------------------------------------
 
 import gleam/dict.{type Dict}
 import gleam/dynamic/decode
@@ -16,6 +16,7 @@ import lustre/element.{type Element}
 import lustre/element/html
 import lustre/event
 import lustre_fable/value.{type Value}
+import rsvp
 
 // TYPES -----------------------------------------------------------------------
 
@@ -23,6 +24,8 @@ pub type Story {
   Story(
     ///
     title: String,
+    ///
+    route: String,
     ///
     component: String,
     ///
@@ -40,6 +43,7 @@ pub type StoryBuilder {
 ///
 pub type StoryConfig {
   StoryConfig(
+    title: String,
     inputs: List(fn(Model) -> Element(Msg)),
     options: List(Option(Msg)),
     view: fn(Model) -> Element(Msg),
@@ -55,6 +59,7 @@ pub type Model {
 ///
 ///
 pub type Msg {
+  ExternalStylesheetLoaded(Result(String, rsvp.Error))
   ComponentUpdatedValue(key: Int, value: Value)
   UserEditedValue(key: Int, value: Value)
 }
@@ -64,33 +69,32 @@ pub type Msg {
 ///
 ///
 pub fn register(
-  title: String,
-  inputs: List(fn(Model) -> Element(Msg)),
-  options: List(Option(Msg)),
-  view: fn(Model) -> Element(Msg),
+  config: StoryConfig,
+  stylesheets: List(String),
+  external_stylesheets: List(String),
 ) -> Result(Story, lustre.Error) {
-  let base = base_tag(title)
+  let base = base_tag(config.title)
   let component = base <> "-story"
   let scene = base <> "-scene"
 
   use _ <- result.try(lustre.register(
     lustre.simple(init: story_init, update: story_update, view: {
-      story_view(_, base <> "-scene", inputs)
+      story_view(_, scene, config.inputs)
     }),
     component,
   ))
 
   use _ <- result.try(lustre.register(
     lustre.component(
-      init: scene_init,
+      init: scene_init(_, stylesheets, external_stylesheets),
       update: scene_update,
-      options:,
-      view: scene_view(_, view),
+      options: config.options,
+      view: scene_view(_, config.view),
     ),
     scene,
   ))
 
-  Ok(Story(title:, component:, scene:))
+  Ok(Story(title: config.title, route: base, component:, scene:))
 }
 
 // STORY -----------------------------------------------------------------------
@@ -100,7 +104,15 @@ fn story_init(_) -> Model {
 }
 
 fn story_update(model: Model, msg: Msg) -> Model {
-  Model(lookup: dict.insert(model.lookup, msg.key, msg.value))
+  case msg {
+    ExternalStylesheetLoaded(_) -> model
+
+    ComponentUpdatedValue(key:, value:) ->
+      Model(lookup: dict.insert(model.lookup, key, value))
+
+    UserEditedValue(key:, value:) ->
+      Model(lookup: dict.insert(model.lookup, key, value))
+  }
 }
 
 fn story_view(
@@ -123,38 +135,93 @@ fn story_view(
       ]
     })
 
-  element.fragment([
-    html.main([], [
-      element.element(
-        scene,
-        [event.on("change", handle_change), ..attributes],
-        [],
-      ),
-    ]),
-    html.aside([], list.map(inputs, fn(input) { input(model) })),
-    html.style(
-      [],
-      "
-      :host {
-        background-color: #f0f0f0;
-      }
-      ",
+  html.div([attribute.class("@container h-full")], [
+    html.div(
+      [
+        attribute.class("h-full grid grid-cols-1 grid-rows-[1fr_300px]"),
+        attribute.class("@3xl:grid-cols-[1fr_300px] @3xl:grid-rows-1"),
+      ],
+      [
+        html.main(
+          [
+            attribute.class(
+              "p-4 grid grid-cols-1 grid-rows-1 place-items-center",
+            ),
+          ],
+          [
+            element.element(
+              scene,
+              [event.on("change", handle_change), ..attributes],
+              [],
+            ),
+          ],
+        ),
+        html.aside(
+          [
+            attribute.class("p-4 border-t"),
+            attribute.class("@3xl:border-t-0 @3xl:border-l"),
+          ],
+          list.map(inputs, fn(input) { input(model) }),
+        ),
+      ],
     ),
   ])
 }
 
 // SCENE -----------------------------------------------------------------------
 
-fn scene_init(_) -> #(Model, Effect(Msg)) {
-  #(Model(lookup: dict.new()), effect.none())
+type SceneModel {
+  SceneModel(
+    lookup: Dict(Int, Value),
+    stylesheets: List(String),
+    pending_stylesheets: Int,
+  )
 }
 
-fn scene_update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
+fn scene_init(
+  _,
+  stylesheets: List(String),
+  external_stylesheets: List(String),
+) -> #(SceneModel, Effect(Msg)) {
+  let model =
+    SceneModel(
+      lookup: dict.new(),
+      stylesheets: stylesheets,
+      pending_stylesheets: list.length(external_stylesheets),
+    )
+
+  let effect =
+    external_stylesheets
+    |> list.map(rsvp.get(_, rsvp.expect_text(ExternalStylesheetLoaded)))
+    |> effect.batch
+
+  #(model, effect)
+}
+
+fn scene_update(model: SceneModel, msg: Msg) -> #(SceneModel, Effect(Msg)) {
   case msg {
     ComponentUpdatedValue(key:, value:) -> #(
-      Model(dict.insert(model.lookup, key, value)),
+      SceneModel(..model, lookup: dict.insert(model.lookup, key, value)),
       effect.none(),
     )
+
+    ExternalStylesheetLoaded(Ok(css)) -> {
+      let model =
+        SceneModel(
+          ..model,
+          stylesheets: [css, ..model.stylesheets],
+          pending_stylesheets: model.pending_stylesheets - 1,
+        )
+
+      #(model, effect.none())
+    }
+
+    ExternalStylesheetLoaded(Error(_)) -> {
+      let model =
+        SceneModel(..model, pending_stylesheets: model.pending_stylesheets - 1)
+
+      #(model, effect.none())
+    }
 
     UserEditedValue(key:, value:) -> #(
       model,
@@ -166,40 +233,69 @@ fn scene_update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   }
 }
 
-fn scene_view(model: Model, view: fn(Model) -> Element(Msg)) -> Element(Msg) {
-  element.fragment([
-    html.div([], [view(model)]),
-    html.style(
-      [],
-      "
-      /* We want to isolate the component's styles completely from the page.
-         Shadow DOM gets us most of the way, but it allows certain inherited
-         styles to pierce and we want to undo that.
-
-         There's no built-in way to do this easily but we employ a little trick
-         here to get around it. Setting everything to `initial` will nuke all
-         styles back to their spec-defined values. This is **not** the same as
-         the UA defaults, so for example now all `<p>` elements are suddenly
-         `display: inline` for whatever reason...
-      */
-      :host {
-        all: initial !important;
-      }
-
-      /* ...so we introduce one level of nesting and here we set everything to
-         `revert`. This reverts uninherited styles to the UA defaults - which we
-         want - and leaves inherited styles alone, but those have already been
-         reset back to spec defaults by the previous rule.
-
-         Introducing this one layer of nesting is a bit annoying, but it's neat
-         that this works!
-      */
-      :host > * {
-        all: revert !important;
-      }
-      ",
-    ),
-  ])
+fn scene_view(
+  model: SceneModel,
+  view: fn(Model) -> Element(Msg),
+) -> Element(Msg) {
+  element.fragment(
+    list.flatten([
+      list.map(model.stylesheets, fn(css) {
+        html.style([], string.replace(css, ":root", ":host"))
+      }),
+      [
+        view(Model(model.lookup)),
+        // These are all the CSS properties that can inherit and therefore will
+        // pierce the shadow DOM. By setting them to `revert` they will be reset
+        // back to the *user agent* default (which is not the same as using `initial`
+        // which is the *spec* default...)
+        //
+        html.style(
+          [],
+          "
+          :host {
+            border-collapse: revert;
+            border-spacing: revert;
+            caption-side: revert;
+            color: revert;
+            cursor: revert;
+            direction: revert;
+            empty-cells: revert;
+            font-family: revert;
+            font-size: revert;
+            font-style: revert;
+            font-variant: revert;
+            font-weight: revert;
+            font-size-adjust: revert;
+            font-stretch: revert;
+            font: revert;
+            letter-spacing: revert;
+            line-height: revert;
+            list-style-image: revert;
+            list-style-position: revert;
+            list-style-type: revert;
+            list-style: revert;
+            orphans: revert;
+            quotes: revert;
+            tab-size: revert;
+            text-align: revert;
+            text-align-last: revert;
+            text-decoration-color: revert;
+            text-indent: revert;
+            text-justify: revert;
+            text-shadow: revert;
+            text-transform: revert;
+            visibility: revert;
+            white-space: revert;
+            widows: revert;
+            word-break: revert;
+            word-spacing: revert;
+            word-wrap: revert;
+          }
+          ",
+        ),
+      ],
+    ]),
+  )
 }
 
 // UTILS -----------------------------------------------------------------------

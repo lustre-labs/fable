@@ -1,0 +1,11 @@
+{application, houdini, [
+    {vsn, "1.1.0"},
+    {applications, [gleam_stdlib]},
+    {description, "🪄 Fast HTML escaping"},
+    {modules, [houdini,
+               houdini@@main,
+               houdini@internal@escape_erl,
+               houdini@internal@escape_generic,
+               houdini_ffi]},
+    {registered, []}
+]}.

@@ -1,0 +1,9 @@
+{application, modem, [
+    {vsn, "2.1.0"},
+    {applications, [gleam_stdlib,
+                    lustre]},
+    {description, "A friendly Lustre package to help you handle routing, links, and manage URLs."},
+    {modules, [modem,
+               modem@@main]},
+    {registered, []}
+]}.

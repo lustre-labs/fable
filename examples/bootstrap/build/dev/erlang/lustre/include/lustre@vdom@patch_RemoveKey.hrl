@@ -1,0 +1,1 @@
+-record(remove_key, {kind :: integer(), key :: binary(), count :: integer()}).

@@ -243,7 +243,10 @@ fn scene_view(
         html.style([], string.replace(css, ":root", ":host"))
       }),
       [
-        view(Model(model.lookup)),
+        case model.pending_stylesheets {
+          0 -> view(Model(model.lookup))
+          _ -> element.none()
+        },
         // These are all the CSS properties that can inherit and therefore will
         // pierce the shadow DOM. By setting them to `revert` they will be reset
         // back to the *user agent* default (which is not the same as using `initial`

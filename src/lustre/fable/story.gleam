@@ -1,9 +1,10 @@
 // IMPORTS ---------------------------------------------------------------------
 
 import gleam/dict.{type Dict}
+import gleam/dynamic.{type Dynamic}
 import gleam/dynamic/decode
 import gleam/int
-import gleam/json
+import gleam/json.{type Json}
 import gleam/list
 import gleam/regexp
 import gleam/result
@@ -15,7 +16,7 @@ import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html
 import lustre/event
-import lustre_fable/value.{type Value}
+import lustre/fable/ui/layout
 import rsvp
 
 // TYPES -----------------------------------------------------------------------
@@ -44,24 +45,53 @@ pub type StoryBuilder {
 pub type StoryConfig {
   StoryConfig(
     title: String,
-    inputs: List(fn(Model) -> Element(Msg)),
+    inputs: List(fn(Controls) -> Element(Msg)),
+    sequences: List(Sequence),
     options: List(Option(Msg)),
-    view: fn(Model) -> Element(Msg),
+    view: fn(Controls) -> Element(Msg),
+  )
+}
+
+pub type Controls {
+  Controls(lookup: Dict(Int, Dynamic))
+}
+
+pub type Sequence {
+  Sequence(
+    ///
+    key: Int,
+    ///
+    name: String,
+    ///
+    messages: List(Msg),
   )
 }
 
 ///
 ///
-pub type Model {
-  Model(lookup: Dict(Int, Value))
+pub opaque type Model {
+  Model(
+    lookup: Dict(Int, Dynamic),
+    sequences: Dict(Int, List(Msg)),
+    sequence: List(Msg),
+    controls_visible: Bool,
+    tab: Tab,
+  )
+}
+
+pub opaque type Tab {
+  TabControls
+  TabSequences
 }
 
 ///
 ///
 pub type Msg {
+  ComponentUpdatedValue(key: Int, value: Dynamic)
   ExternalStylesheetLoaded(Result(String, rsvp.Error))
-  ComponentUpdatedValue(key: Int, value: Value)
-  UserEditedValue(key: Int, value: Value)
+  ParentSetControlsVisibility(controls_visible: Bool)
+  UserChangedTab(tab: Tab)
+  UserEditedValue(key: Int, value: Json)
 }
 
 //
@@ -78,9 +108,27 @@ pub fn register(
   let scene = base <> "-scene"
 
   use _ <- result.try(lustre.register(
-    lustre.simple(init: story_init, update: story_update, view: {
-      story_view(_, scene, config.inputs)
-    }),
+    lustre.component(
+      init: story_init(
+        _,
+        sequences: list.fold(
+          config.sequences,
+          dict.new(),
+          fn(sequences, sequence) {
+            dict.insert(sequences, sequence.key, sequence.messages)
+          },
+        ),
+        should_show_controls: !list.is_empty(config.inputs),
+      ),
+      update: story_update,
+      view: story_view(_, scene, config.inputs),
+      options: [
+        component.on_property_change(
+          "controls",
+          decode.bool |> decode.map(ParentSetControlsVisibility),
+        ),
+      ],
+    ),
     component,
   ))
 
@@ -99,71 +147,129 @@ pub fn register(
 
 // STORY -----------------------------------------------------------------------
 
-fn story_init(_) -> Model {
-  Model(lookup: dict.new())
+fn story_init(
+  _,
+  sequences sequences: Dict(Int, List(Msg)),
+  should_show_controls controls_visible: Bool,
+) -> #(Model, Effect(Msg)) {
+  let model =
+    Model(
+      lookup: dict.new(),
+      sequences:,
+      sequence: [],
+      controls_visible:,
+      tab: TabControls,
+    )
+
+  #(model, effect.none())
 }
 
-fn story_update(model: Model, msg: Msg) -> Model {
+fn story_update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
-    ExternalStylesheetLoaded(_) -> model
+    ComponentUpdatedValue(key:, value:) -> #(
+      Model(..model, lookup: dict.insert(model.lookup, key, value)),
+      effect.none(),
+    )
 
-    ComponentUpdatedValue(key:, value:) ->
-      Model(lookup: dict.insert(model.lookup, key, value))
+    ExternalStylesheetLoaded(_) -> #(model, effect.none())
 
-    UserEditedValue(key:, value:) ->
-      Model(lookup: dict.insert(model.lookup, key, value))
+    ParentSetControlsVisibility(controls_visible:) -> #(
+      Model(..model, controls_visible:),
+      effect.none(),
+    )
+
+    UserChangedTab(tab:) -> #(Model(..model, tab:), effect.none())
+
+    UserEditedValue(key:, value:) -> #(
+      Model(
+        ..model,
+        lookup: dict.insert(
+          model.lookup,
+          key,
+          value
+            |> json.to_string
+            |> json.parse(decode.dynamic)
+            |> result.unwrap(dynamic.nil()),
+        ),
+      ),
+      effect.none(),
+    )
   }
 }
 
 fn story_view(
   model: Model,
   scene: String,
-  inputs: List(fn(Model) -> Element(Msg)),
+  inputs: List(fn(Controls) -> Element(Msg)),
 ) -> Element(Msg) {
   let handle_change = {
     use key <- decode.subfield(["detail", "key"], decode.int)
-    use value <- decode.subfield(["detail", "value"], value.decoder())
+    use value <- decode.subfield(["detail", "value"], decode.dynamic)
 
     decode.success(ComponentUpdatedValue(key:, value:))
   }
 
   let attributes =
     dict.fold(model.lookup, [], fn(attributes, key, value) {
-      [
-        attribute.property(int.to_string(key), value.to_json(value)),
-        ..attributes
-      ]
+      [attribute.property(int.to_string(key), as_json(value)), ..attributes]
     })
 
-  html.div([attribute.class("@container h-full")], [
-    html.div(
+  layout.story(
+    scene: element.element(
+      scene,
       [
-        attribute.class("h-full grid grid-cols-1 grid-rows-[1fr_300px]"),
-        attribute.class("@3xl:grid-cols-[1fr_300px] @3xl:grid-rows-1"),
+        event.on("change", handle_change),
+        attribute.class("rounded p-4 border-dashed border border-blue-500/0"),
+        attribute.class("transition hover:border-blue-500/100"),
+        ..attributes
       ],
-      [
-        html.main(
-          [
-            attribute.class(
-              "p-4 grid grid-cols-1 grid-rows-1 place-items-center",
-            ),
-          ],
-          [
-            element.element(
-              scene,
-              [event.on("change", handle_change), ..attributes],
-              [],
-            ),
-          ],
-        ),
-        html.aside(
-          [
-            attribute.class("p-4 border-t"),
-            attribute.class("@3xl:border-t-0 @3xl:border-l"),
-          ],
-          list.map(inputs, fn(input) { input(model) }),
-        ),
-      ],
+      [],
+    ),
+    controls: case list.is_empty(inputs) && dict.is_empty(model.sequences) {
+      True -> element.none()
+      False ->
+        element.fragment([
+          story_view_toggle(model.tab),
+          html.div(
+            [attribute.class("flex flex-col overflow-y-auto")],
+            case model.tab {
+              TabControls ->
+                list.map(inputs, fn(input) { input(Controls(model.lookup)) })
+
+              TabSequences -> [
+                html.p(
+                  [attribute.class("flex-1 flex justify-center items-center")],
+                  [
+                    html.text(
+                      "Sequences are currently unsupported in this pre-release.",
+                    ),
+                  ],
+                ),
+              ]
+            },
+          ),
+        ])
+    },
+  )
+}
+
+fn story_view_toggle(active: Tab) -> Element(Msg) {
+  let classes = fn(tab) {
+    attribute.classes([
+      #("flex-1 text-center px-3 py-1 rounded-sm cursor-pointer", True),
+      #("hover:bg-stone-50", True),
+      #("bg-white", tab == active),
+    ])
+  }
+
+  html.div([attribute.class("flex gap-2 rounded bg-stone-100 p-2")], [
+    html.button(
+      [event.on_click(UserChangedTab(TabControls)), classes(TabControls)],
+      [html.text("Controls")],
+    ),
+    html.button(
+      [event.on_click(UserChangedTab(TabSequences)), classes(TabSequences)],
+      [html.text("Sequences")],
     ),
   ])
 }
@@ -172,7 +278,7 @@ fn story_view(
 
 type SceneModel {
   SceneModel(
-    lookup: Dict(Int, Value),
+    lookup: Dict(Int, Dynamic),
     stylesheets: List(String),
     pending_stylesheets: Int,
   )
@@ -223,11 +329,15 @@ fn scene_update(model: SceneModel, msg: Msg) -> #(SceneModel, Effect(Msg)) {
       #(model, effect.none())
     }
 
+    ParentSetControlsVisibility(..) -> #(model, effect.none())
+
+    UserChangedTab(..) -> #(model, effect.none())
+
     UserEditedValue(key:, value:) -> #(
       model,
       event.emit(
         "change",
-        json.object([#("key", json.int(key)), #("value", value.to_json(value))]),
+        json.object([#("key", json.int(key)), #("value", value)]),
       ),
     )
   }
@@ -235,7 +345,7 @@ fn scene_update(model: SceneModel, msg: Msg) -> #(SceneModel, Effect(Msg)) {
 
 fn scene_view(
   model: SceneModel,
-  view: fn(Model) -> Element(Msg),
+  view: fn(Controls) -> Element(Msg),
 ) -> Element(Msg) {
   element.fragment(
     list.flatten([
@@ -244,7 +354,7 @@ fn scene_view(
       }),
       [
         case model.pending_stylesheets {
-          0 -> view(Model(model.lookup))
+          0 -> view(Controls(model.lookup))
           _ -> element.none()
         },
         // These are all the CSS properties that can inherit and therefore will
@@ -330,3 +440,7 @@ fn do_base_tag(base: String, count: Int) -> String {
     False -> base <> "-" <> int.to_string(count)
   }
 }
+
+@external(erlang, "gleam@function", "identity")
+@external(javascript, "../../../gleam_stdlib/gleam/function.mjs", "identity")
+fn as_json(val: Dynamic) -> Json

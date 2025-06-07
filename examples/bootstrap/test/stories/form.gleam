@@ -13,7 +13,7 @@ fn input(
     html.span([attribute.class("input-group-text")], [html.text(addon.0)])
   }
 
-  html.div([attribute.class("input-group mb-3")], [
+  html.div([attribute.class("input-group")], [
     case addon.1 {
       True -> element.none()
       False -> aside
@@ -37,16 +37,16 @@ pub fn addon_story() {
 
   // Configure the state for our story. Each piece of state gets its own control
   // in the control panel, but can also be read and updated from the view too.
-  use value, set_value <- fable.input("Value")
-  use addon, _ <- fable.input("Addon")
-  use flip, _ <- fable.checkbox("Flip addon")
+  use value <- fable.input("Value", "lucy")
+  use addon <- fable.input("Addon", "@gleam.run")
+  use flip <- fable.checkbox("Flip addon")
 
   // The actual view, the thing we want to demo.
-  let view = fn(model) {
+  let view = fn(controls) {
     input(
-      value: value(model),
-      addon: #(addon(model), flip(model)),
-      on_input: set_value,
+      value: fable.get(controls, value),
+      addon: #(fable.get(controls, addon), fable.get(controls, flip)),
+      on_input: fable.set(value, _),
     )
   }
 

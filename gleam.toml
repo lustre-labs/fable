@@ -1,34 +1,23 @@
 name = "lustre_fable"
 version = "1.0.0"
+target = "javascript"
 
-# Fill out these fields if you intend to generate HTML documentation or publish
-# your project to the Hex package manager.
-#
-# description = ""
-# licences = ["Apache-2.0"]
-# repository = { type = "github", user = "", repo = "" }
-# links = [{ title = "Website", href = "" }]
-#
-# For a full reference of all the available options, you can have a look at
-# https://gleam.run/writing-gleam/gleam-toml/.
-
-internal_modules = ["lustre_fable/*"]
+internal_modules = ["lustre_fable/*", "lustre/fable/*"]
 
 [dependencies]
 gleam_json = ">= 3.0.1 and < 4.0.0"
+gleam_regexp = ">= 1.1.1 and < 2.0.0"
 gleam_stdlib = ">= 0.60.0 and < 2.0.0"
 justin = ">= 1.0.1 and < 2.0.0"
 lustre = ">= 5.1.0 and < 6.0.0"
 modem = ">= 2.0.0 and < 3.0.0"
-gleam_regexp = ">= 1.1.1 and < 2.0.0"
 rsvp = ">= 1.1.0 and < 2.0.0"
 
 [dev-dependencies]
-gleeunit = ">= 1.0.0 and < 2.0.0"
-glailglind = ">= 2.0.0 and < 3.0.0"
-simplifile = ">= 2.2.1 and < 3.0.0"
 cog = ">= 2.0.3 and < 3.0.0"
+glailglind = ">= 2.0.0 and < 3.0.0"
 shellout = ">= 1.7.0 and < 2.0.0"
+simplifile = ">= 2.2.1 and < 3.0.0"
 
 [tailwind]
 args = [

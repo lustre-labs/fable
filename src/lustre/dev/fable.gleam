@@ -1,52 +1,71 @@
 // IMPORTS ---------------------------------------------------------------------
 
 import gleam/dict
-import gleam/dynamic/decode
+import gleam/dynamic
+import gleam/dynamic/decode.{type Decoder}
 import gleam/int
+import gleam/json.{type Json}
 import gleam/list
 import gleam/result
+import lustre
 import lustre/attribute
 import lustre/component
 import lustre/element.{type Element}
 import lustre/element/html
 import lustre/event
-import lustre_fable/book.{Book}
-import lustre_fable/story.{StoryBuilder, StoryConfig}
-import lustre_fable/value.{type Value, PrimitiveBool, PrimitiveString}
+import lustre/fable/book.{Book}
+import lustre/fable/story.{StoryBuilder, StoryConfig}
 
 // BOOKS AND CHAPTERS ----------------------------------------------------------
 
+///
+///
 pub type Book =
   book.Book
 
 ///
 ///
-pub fn book(title: String) -> Book {
-  Book(title:, stylesheets: [], external_stylesheets: [], chapters: [])
+pub opaque type BookOption {
+  BookOption(configure: fn(Book) -> Book)
 }
 
 ///
 ///
-pub fn chapter(book: Book, title: String, stories: List(Story)) -> Book {
+pub fn book(title: String, options: List(BookOption)) -> Book {
+  let init = Book(title, [], [], [])
+  use book, option <- list.fold(options, init)
+
+  option.configure(book)
+}
+
+///
+///
+pub fn chapter(title: String, stories: List(Story)) -> BookOption {
+  use book <- BookOption
+
   Book(..book, chapters: [#(title, stories), ..book.chapters])
 }
 
 ///
 ///
-pub fn stylesheet(book: Book, css stylesheet: String) -> Book {
+pub fn stylesheet(css stylesheet: String) -> BookOption {
+  use book <- BookOption
+
   Book(..book, stylesheets: [stylesheet, ..book.stylesheets])
 }
 
 ///
 ///
-pub fn external_stylesheet(book: Book, url href: String) -> Book {
+pub fn external_stylesheet(url href: String) -> BookOption {
+  use book <- BookOption
+
   Book(..book, external_stylesheets: [href, ..book.external_stylesheets])
 }
 
-pub fn start(book: Book) -> Nil {
-  let _ = book.start(book)
-
-  Nil
+///
+///
+pub fn start(book: Book) -> Result(Nil, lustre.Error) {
+  book.start(book)
 }
 
 // STORIES ---------------------------------------------------------------------
@@ -58,13 +77,17 @@ pub type Story =
 
 ///
 ///
-pub type StoryBulder =
+pub type StoryBuilder =
   story.StoryBuilder
+
+pub opaque type Control(a) {
+  Control(get: fn(Controls) -> a, set: fn(a) -> Msg)
+}
 
 ///
 ///
-pub type Model =
-  story.Model
+pub type Controls =
+  story.Controls
 
 ///
 ///
@@ -75,18 +98,19 @@ pub type Msg =
 
 ///
 ///
-pub fn story(title: String, builder: fn() -> StoryBulder) -> Story {
+pub fn story(title: String, builder: fn() -> StoryBuilder) -> Story {
   StoryConfig(..builder().run(0), title:)
 }
 
 ///
 ///
-pub fn scene(view: fn(Model) -> Element(Msg)) -> StoryBulder {
+pub fn scene(view: fn(Controls) -> Element(Msg)) -> StoryBuilder {
   use _ <- StoryBuilder
 
   StoryConfig(
     title: "",
     inputs: [],
+    sequences: [],
     options: [component.adopt_styles(False)],
     view:,
   )
@@ -96,15 +120,33 @@ pub fn scene(view: fn(Model) -> Element(Msg)) -> StoryBulder {
 
 ///
 ///
+pub fn get(controls: Controls, control: Control(a)) -> a {
+  control.get(controls)
+}
+
+///
+///
+pub fn set(control: Control(a), value: a) -> Msg {
+  control.set(value)
+}
+
+///
+///
 pub fn input(
-  label: String,
-  next: fn(fn(Model) -> String, fn(String) -> Msg) -> StoryBulder,
-) -> StoryBulder {
-  use value, set_value <- control(PrimitiveString, value.as_string, _, next)
+  label label: String,
+  default value: String,
+  next next: fn(Control(String)) -> StoryBuilder,
+) -> StoryBuilder {
+  use value, set_value <- control(value, json.string, decode.string, _, next)
 
   html.label([], [
-    html.p([], [html.text(label)]),
-    html.input([attribute.value(value), event.on_input(set_value)]),
+    html.p([attribute.class("text-sm")], [html.text(label)]),
+    html.input([
+      attribute.class("border rounded px-2 py-1"),
+      attribute.class("focus:outline-none focus:border-blue-500"),
+      attribute.value(value),
+      event.on_input(set_value),
+    ]),
   ])
 }
 
@@ -112,12 +154,12 @@ pub fn input(
 ///
 pub fn checkbox(
   label: String,
-  next: fn(fn(Model) -> Bool, fn(Bool) -> Msg) -> StoryBulder,
-) -> StoryBulder {
-  use value, set_value <- control(PrimitiveBool, value.as_bool, _, next)
+  next: fn(Control(Bool)) -> StoryBuilder,
+) -> StoryBuilder {
+  use value, set_value <- control(False, json.bool, decode.bool, _, next)
 
   html.label([], [
-    html.p([], [html.text(label)]),
+    html.p([attribute.class("text-sm")], [html.text(label)]),
     html.input([
       attribute.checked(value),
       attribute.type_("checkbox"),
@@ -131,9 +173,9 @@ pub fn checkbox(
 pub fn select(
   label: String,
   options: List(#(String, String)),
-  next: fn(fn(Model) -> String, fn(String) -> Msg) -> StoryBulder,
-) -> StoryBulder {
-  use value, set_value <- control(PrimitiveString, value.as_string, _, next)
+  next: fn(Control(String)) -> StoryBuilder,
+) -> StoryBuilder {
+  use value, set_value <- control("", json.string, decode.string, _, next)
   let options =
     list.map(options, fn(option) {
       html.option(
@@ -152,46 +194,67 @@ pub fn select(
 }
 
 fn control(
-  wrap: fn(value) -> Value,
-  read: fn(Value) -> value,
-  view: fn(value, fn(value) -> Msg) -> Element(Msg),
-  next: fn(fn(Model) -> value, fn(value) -> Msg) -> StoryBulder,
-) -> StoryBulder {
+  default: a,
+  encode: fn(a) -> Json,
+  decoder: Decoder(a),
+  view: fn(a, fn(a) -> Msg) -> Element(Msg),
+  next: fn(Control(a)) -> StoryBuilder,
+) -> StoryBuilder {
   use key <- StoryBuilder
 
-  let state = fn(model: Model) {
-    model.lookup
+  let state = fn(controls: Controls) {
+    controls.lookup
     |> dict.get(key)
-    // If the state hasn't yet been set we'll just default to an empty string. The
-    // provided `read` function will default to a value of whatever type is
-    // appropriate.
-    |> result.unwrap(PrimitiveString(""))
-    |> read
+    |> result.unwrap(dynamic.nil())
+    |> decode.run(decoder)
+    |> result.unwrap(default)
   }
 
   let set_state = fn(value) {
     value
-    |> wrap
+    |> encode
     |> story.UserEditedValue(key:, value: _)
   }
 
-  let input = fn(model) { view(state(model), set_state) }
+  let input = fn(controls) { view(state(controls), set_state) }
 
   let option =
     component.on_property_change(
       int.to_string(key),
-      value.decoder()
-        |> decode.map(story.ComponentUpdatedValue(key:, value: _))
-        |> decode.map(fn(msg) { echo msg }),
+      decode.dynamic |> decode.map(story.ComponentUpdatedValue(key:, value: _)),
     )
 
-  let StoryConfig(title:, inputs:, options:, view:) =
-    next(state, set_state).run(key + 1)
+  let StoryConfig(title:, inputs:, sequences:, options:, view:) =
+    next(Control(get: state, set: set_state)).run(key + 1)
 
   StoryConfig(
     title:,
     inputs: [input, ..inputs],
+    sequences:,
     options: [option, ..options],
+    view:,
+  )
+}
+
+// SEQUENCES -------------------------------------------------------------------
+
+///
+///
+pub fn sequence(
+  label: String,
+  actions: List(Msg),
+  next: fn() -> StoryBuilder,
+) -> StoryBuilder {
+  use key <- StoryBuilder
+
+  let StoryConfig(title:, inputs:, sequences:, options:, view:) =
+    next().run(key + 1)
+
+  StoryConfig(
+    title:,
+    inputs:,
+    sequences: [story.Sequence(key, label, actions), ..sequences],
+    options:,
     view:,
   )
 }

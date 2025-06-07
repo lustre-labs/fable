@@ -1,12 +1,20 @@
+// IMPORTS ---------------------------------------------------------------------
+
 import gleam/uri.{type Uri}
 import lustre/attribute.{type Attribute}
 
+// TYPES -----------------------------------------------------------------------
+
+///
+///
 pub type Route {
   Index
   Chapter(chapter: String)
   Story(chapter: String, story: String)
   NotFound
 }
+
+// CONSTRUCTORS ----------------------------------------------------------------
 
 ///
 ///
@@ -18,6 +26,8 @@ pub fn parse(uri: Uri) -> Route {
     _ -> NotFound
   }
 }
+
+// CONVERSIONS -----------------------------------------------------------------
 
 ///
 ///

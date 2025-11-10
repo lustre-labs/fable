@@ -35,7 +35,8 @@ pub type Book {
 pub fn start(book: Book) {
   let app = lustre.application(init:, update:, view:)
   let chapters =
-    list.filter_map(book.chapters, fn(chapter) {
+    book.chapters
+    |> list.filter_map(fn(chapter) {
       chapter.init(
         chapter.0,
         chapter.1,
@@ -43,6 +44,7 @@ pub fn start(book: Book) {
         book.external_stylesheets,
       )
     })
+    |> list.sort(fn(a, b) { string.compare(a.title, b.title) })
 
   let args =
     Args(
@@ -202,15 +204,15 @@ fn view(model: Model) -> Element(Msg) {
     on_sidebar_toggle: UserToggledSidebar,
     header: [],
     sidebar: [
-      html.h1([attribute.class("flex items-center min-h-12 bg-blue-50")], [
-        html.span([attribute.class("text-lg text-blue-500 font-semibold")], [
+      html.h1([attribute.class("flex items-center bg-blue-50 min-h-12")], [
+        html.span([attribute.class("text-lg font-semibold text-blue-500")], [
           html.text(model.title),
         ]),
       ]),
       html.div([], [
         html.div(
           [
-            attribute.class("flex items-center gap-2 border rounded px-3 py-2"),
+            attribute.class("flex gap-2 items-center py-2 px-3 rounded border"),
             attribute.class("focus-within:border-blue-500"),
           ],
           [
@@ -296,7 +298,7 @@ fn view_nav_story(
       #(_, "", "") -> [html.text(story.title)]
       #(before, filter, after) -> [
         html.text(before),
-        html.span([attribute.class("underline text-blue-500")], [
+        html.span([attribute.class("text-blue-500 underline")], [
           html.text(filter),
         ]),
         html.text(after),

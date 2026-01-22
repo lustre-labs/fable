@@ -7,6 +7,6 @@ erl_crash.dump
 # provide a different input, so we're just going to ignore it.
 input.css
 
-
+examples/*/.lustre
 examples/*/build
 examples/*/priv

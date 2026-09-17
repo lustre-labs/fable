@@ -1,12 +1,5 @@
 *.beam
 *.ez
 /build
+/.lustre
 erl_crash.dump
-
-# Glailglind has some bug where it will always generate this file even if you
-# provide a different input, so we're just going to ignore it.
-input.css
-
-examples/*/.lustre
-examples/*/build
-examples/*/priv

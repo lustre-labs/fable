@@ -11,3 +11,9 @@ justin = ">= 1.0.1 and < 2.0.0"
 lustre = { path = "../lustre" }
 lustre_portal = ">= 1.0.0 and < 2.0.0"
 modem = ">= 2.0.0 and < 3.0.0"
+
+[dev_dependencies]
+lustre_dev_tools = ">= 2.3.6 and < 3.0.0"
+
+[tools.lustre.dev]
+watch = ["dev"]

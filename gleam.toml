@@ -6,23 +6,8 @@ internal_modules = ["lustre_fable/*", "lustre/fable/*"]
 
 [dependencies]
 gleam_json = ">= 3.0.1 and < 4.0.0"
-gleam_regexp = ">= 1.1.1 and < 2.0.0"
 gleam_stdlib = ">= 0.60.0 and < 2.0.0"
 justin = ">= 1.0.1 and < 2.0.0"
-lustre = ">= 5.2.1 and < 6.0.0"
+lustre = ">= 5.7.0 and < 6.0.0"
 lustre_portal = ">= 1.0.0 and < 2.0.0"
 modem = ">= 2.0.0 and < 3.0.0"
-rsvp = ">= 1.1.0 and < 2.0.0"
-
-[dev-dependencies]
-cog = ">= 2.0.3 and < 3.0.0"
-glailglind = ">= 2.0.0 and < 3.0.0"
-shellout = ">= 1.7.0 and < 2.0.0"
-simplifile = ">= 2.2.1 and < 3.0.0"
-
-[tailwind]
-args = [
-    "--config=tailwind.config.js",
-    "--input=./src/fable.css",
-    "--output=./priv/fable.css",
-]

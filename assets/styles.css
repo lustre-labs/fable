@@ -1,0 +1,94 @@
+@import url("https://fonts.googleapis.com/css2?family=Caveat:wght@400..700&family=Neuton:ital,wght@0,200;0,300;0,400;0,700;0,800;1,400&family=Space+Grotesk:wght@300..700&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap");
+
+@layer base, layout, components;
+@layer base {
+  :root {
+    color-scheme: light dark;
+
+    --colour-blue-050: #f4f2fc;
+    --colour-blue-100: #e8e5f9;
+    --colour-blue-200: #cdc7f1;
+    --colour-blue-400: #aca1e7;
+    --colour-blue-600: #553fcf;
+    --colour-blue-800: #3a28a1;
+    --colour-blue-900: #181143;
+    --colour-blue-950: #0f0b2a;
+
+    --colour-orange-050: #fff1eb;
+    --colour-orange-100: #ffe1d5;
+    --colour-orange-200: #ffbda0;
+    --colour-orange-400: #ff8a58;
+    --colour-orange-600: #a33100;
+    --colour-orange-800: #752300;
+    --colour-orange-900: #310f00;
+    --colour-orange-950: #1f0900;
+
+    --colour-pink-050: #ffeffc;
+    --colour-pink-100: #ffddfa;
+    --colour-pink-200: #feb3f3;
+    --colour-pink-400: #fe76e9;
+    --colour-pink-600: #a6018c;
+    --colour-pink-800: #780166;
+    --colour-pink-900: #36002e;
+    --colour-pink-950: #25001f;
+
+    --colour-red-050: #fff8fa;
+    --colour-red-100: #fee8ef;
+    --colour-red-200: #fcbace;
+    --colour-red-400: #f986a9;
+    --colour-red-600: #b2093d;
+    --colour-red-800: #81062c;
+    --colour-red-900: #3a0314;
+    --colour-red-950: #27020d;
+
+    --colour-grey-050: #faf9f9;
+    --colour-grey-100: #efedeb;
+    --colour-grey-200: #d0cbc4;
+    --colour-grey-400: #b2a89e;
+    --colour-grey-600: #61584d;
+    --colour-grey-800: #453e37;
+    --colour-grey-900: #1c1916;
+    --colour-grey-950: #110f0e;
+
+    --font-neuton: "Neuton", Georgia, serif;
+    --font-space-grotesk: "Space Grotesk", system-ui, sans-serif;
+    --font-space-mono: "Space Mono", monospace;
+    --font-caveat: "Caveat", cursive;
+
+    --size-gap: 0.25rem;
+    --size-radius: 4px;
+    --size-text: 1rem;
+  }
+
+  *,
+  *::before,
+  *::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -webkit-text-size-adjust: none;
+    text-size-adjust: none;
+    hanging-punctuation: first allow-end last;
+  }
+
+  body {
+    margin: 0;
+    font-family: var(--font-space-grotesk);
+    font-size: var(--size-text);
+    line-height: round(var(--size-text) * 1.7, var(--size-gap));
+  }
+
+  iframe {
+    border: none;
+  }
+}
+
+@layer layout {
+}
+
+@layer components {
+}

@@ -2,6 +2,7 @@
 
 import fable/internal/book
 import fable/internal/story
+import gleam/function
 import gleam/json
 import gleam/list
 import gleam/result
@@ -65,6 +66,15 @@ pub fn scene(
   play setup: fn(Simulation(model, message)) -> Simulation(model, message),
 ) -> Scene(arguments, model, message) {
   story.scene(name, arguments, setup)
+}
+
+///
+/// 
+pub fn static_scene(
+  name name: String,
+  init arguments: arguments,
+) -> Scene(arguments, model, message) {
+  story.scene(name, arguments, function.identity)
 }
 
 // SIMULATED INTERACTIONS ------------------------------------------------------

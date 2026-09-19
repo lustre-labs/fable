@@ -2,8 +2,6 @@ name = "lustre_fable"
 version = "1.0.0"
 target = "javascript"
 
-internal_modules = ["lustre_fable/*", "lustre/fable/*"]
-
 [dependencies]
 gleam_json = ">= 3.0.1 and < 4.0.0"
 gleam_stdlib = ">= 0.60.0 and < 2.0.0"

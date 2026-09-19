@@ -1,8 +1,11 @@
 // IMPORTS ---------------------------------------------------------------------
 
 import gleam/bool
+import gleam/int
+import gleam/option.{None}
 import gleam/uri.{type Uri}
 import lustre/attribute.{type Attribute}
+import lustre/effect.{type Effect}
 import modem
 
 // TYPES -----------------------------------------------------------------------
@@ -10,11 +13,9 @@ import modem
 ///
 /// 
 pub type Route {
-  Book
-  Chapter(name: String)
-  Story(chapter: String, name: String)
-  Scene(chapter: String, story: String, name: String)
-  Unknown(path: String)
+  Index
+  SceneSelect(chapter: String, story: String)
+  SceneDisplay(chapter: String, story: String, scene: Int)
 }
 
 // CONSTRUCTORS ----------------------------------------------------------------
@@ -28,38 +29,39 @@ pub fn from_uri(request: Uri) -> Result(Route, Uri) {
   use <- bool.guard(request.port != location.port, Error(request))
 
   case uri.path_segments(request.path) {
-    [] -> Ok(Book)
-    [name] -> Ok(Chapter(name:))
-    [chapter, name] -> Ok(Story(chapter:, name:))
-    [chapter, story, name] -> Ok(Scene(chapter:, story:, name:))
+    [chapter, story, scene] ->
+      case int.parse(scene) {
+        Ok(scene) -> Ok(SceneDisplay(chapter:, story:, scene:))
+        Error(_) -> Ok(SceneSelect(chapter:, story:))
+      }
 
-    _ -> Ok(Unknown(path: request.path))
+    [chapter, story] -> Ok(SceneSelect(chapter:, story:))
+
+    _ -> Ok(Index)
   }
 }
 
 // CONVERSIONS -----------------------------------------------------------------
 
-pub fn to_path(route: Route) -> String {
+pub fn path(route: Route) -> String {
   case route {
-    Book | Unknown(..) -> "/"
-    Chapter(name:) -> "/" <> name
-    Story(chapter:, name:) -> "/" <> chapter <> "/" <> name
-    Scene(chapter:, story:, name:) ->
-      "/" <> chapter <> "/" <> story <> "/" <> name
-  }
-}
+    Index -> "/"
 
-pub fn to_key(route: Route) -> Result(String, Nil) {
-  case route {
-    Scene(chapter:, story:, name:) ->
-      Ok("/" <> chapter <> "/" <> story <> "/" <> name)
+    SceneSelect(chapter:, story:) -> "/" <> chapter <> "/" <> story
 
-    _ -> Error(Nil)
+    SceneDisplay(chapter:, story:, scene:) ->
+      "/" <> chapter <> "/" <> story <> "/" <> int.to_string(scene)
   }
 }
 
 ///
 /// 
 pub fn href(route: Route) -> Attribute(message) {
-  attribute.href(to_path(route))
+  attribute.href(path(route))
+}
+
+// EFFECTS ---------------------------------------------------------------------
+
+pub fn push(route: Route) -> Effect(message) {
+  modem.push(path(route), None, None)
 }

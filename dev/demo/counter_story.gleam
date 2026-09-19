@@ -1,8 +1,9 @@
 // IMPORTS ---------------------------------------------------------------------
 
 import demo/counter
-import fable.{type SceneConfig, type Story}
+import fable.{type Scene, type Story}
 import gleam/function
+import lustre/dev/query
 import lustre/dev/simulate
 
 // STORY SETUP -----------------------------------------------------------------
@@ -18,7 +19,7 @@ type Message {
 
 pub fn setup() -> Story {
   let name = "Counter"
-  let app =
+  let template =
     simulate.simple(
       init: function.identity,
       update: fn(model, message) {
@@ -31,7 +32,7 @@ pub fn setup() -> Story {
       view: counter.view(_, Increment, Decrement, Reset),
     )
 
-  fable.story(name:, app:, scenes: [
+  fable.story(name:, template:, scenes: [
     incrementing_scene(),
     reset_scene(),
   ])
@@ -39,21 +40,21 @@ pub fn setup() -> Story {
 
 // SCENES ----------------------------------------------------------------------
 
-fn incrementing_scene() -> SceneConfig(Int, Model, Message) {
-  fable.scene("Incrementing", fable.mobile, 0, fn(simulation) {
+fn incrementing_scene() -> Scene(Int, Model, Message) {
+  fable.scene(name: "Incrementing", init: 0, play: fn(simulation) {
     simulation
-    |> simulate.event(on: counter.increment(), name: "click", data: [])
-    |> simulate.event(on: counter.increment(), name: "click", data: [])
-    |> simulate.event(on: counter.increment(), name: "click", data: [])
+    |> fable.click(target: query.element(matching: query.test_id("incr")))
+    |> fable.click(target: query.element(matching: query.test_id("incr")))
+    |> fable.click(target: query.element(matching: query.test_id("incr")))
   })
 }
 
-fn reset_scene() -> SceneConfig(Int, Model, Message) {
-  fable.scene("Reset", fable.mobile, 100, fn(simulation) {
+fn reset_scene() -> Scene(Int, Model, Message) {
+  fable.scene(name: "Reset", init: 100, play: fn(simulation) {
     simulation
-    |> simulate.event(on: counter.increment(), name: "click", data: [])
-    |> simulate.event(on: counter.increment(), name: "click", data: [])
-    |> simulate.event(on: counter.reset(), name: "click", data: [])
-    |> simulate.event(on: counter.decrement(), name: "click", data: [])
+    |> fable.click(target: query.element(matching: query.test_id("incr")))
+    |> fable.click(target: query.element(matching: query.test_id("incr")))
+    |> fable.click(target: query.element(matching: query.test_id("reset")))
+    |> fable.click(target: query.element(matching: query.test_id("decr")))
   })
 }

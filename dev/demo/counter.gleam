@@ -2,7 +2,6 @@
 
 import gleam/int
 import lustre/attribute
-import lustre/dev/query.{type Query}
 import lustre/element.{type Element}
 import lustre/element/html
 import lustre/event
@@ -35,18 +34,4 @@ fn view_control(
 
 fn view_count(count: Int) -> Element(message) {
   html.span([], [html.text(int.to_string(count))])
-}
-
-// TEST UTILS ------------------------------------------------------------------
-
-pub fn decrement() -> Query {
-  query.element(matching: query.test_id("decr"))
-}
-
-pub fn increment() -> Query {
-  query.element(matching: query.test_id("incr"))
-}
-
-pub fn reset() -> Query {
-  query.element(matching: query.test_id("reset"))
 }

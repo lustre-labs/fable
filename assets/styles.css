@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Caveat:wght@400..700&family=Neuton:ital,wght@0,200;0,300;0,400;0,700;0,800;1,400&family=Space+Grotesk:wght@300..700&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Caveat:wght@400..700&family=Neuton:ital,wght@0,200;0,300;0,400;0,700;0,800;1,400&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&family=Work+Sans:ital,wght@0,100..900;1,100..900&display=swap");
 
 :root {
   color-scheme: light dark;
@@ -49,7 +49,7 @@
   --colour-grey-950: #110f0e;
 
   --font-neuton: "Neuton", Georgia, serif;
-  --font-space-grotesk: "Space Grotesk", system-ui, sans-serif;
+  --font-work-sans: "Work Sans", system-ui, sans-serif;
   --font-space-mono: "Space Mono", monospace;
   --font-caveat: "Caveat", cursive;
 
@@ -76,7 +76,7 @@ html {
 body {
   background-color: var(--colour-grey-050);
   margin: 0;
-  font-family: var(--font-space-grotesk);
+  font-family: var(--font-work-sans);
   font-size: var(--size-text);
   line-height: round(var(--size-text) * 1.7, var(--size-gap));
 }

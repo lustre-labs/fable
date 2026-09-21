@@ -16,6 +16,3 @@ cog = ">= 2.0.3 and < 3.0.0"
 
 [tools.lustre.dev]
 watch = ["dev"]
-
-[[tools.lustre.html.stylesheets]]
-href = "/styles.css"

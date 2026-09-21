@@ -13,5 +13,5 @@ pub fn main() {
       ]),
     ])
 
-  let assert Ok(_) = fable.start(book, "#app")
+  let assert Ok(_) = fable.start(book)
 }

@@ -43,18 +43,18 @@ pub fn setup() -> Story {
 fn incrementing_scene() -> Scene(Int, Model, Message) {
   fable.scene(name: "Incrementing", init: 0, play: fn(simulation) {
     simulation
-    |> fable.click(target: query.element(matching: query.test_id("incr")))
-    |> fable.click(target: query.element(matching: query.test_id("incr")))
-    |> fable.click(target: query.element(matching: query.test_id("incr")))
+    |> simulate.click(on: query.element(matching: query.test_id("incr")))
+    |> simulate.click(on: query.element(matching: query.test_id("incr")))
+    |> simulate.click(on: query.element(matching: query.test_id("incr")))
   })
 }
 
 fn reset_scene() -> Scene(Int, Model, Message) {
   fable.scene(name: "Reset", init: 100, play: fn(simulation) {
     simulation
-    |> fable.click(target: query.element(matching: query.test_id("incr")))
-    |> fable.click(target: query.element(matching: query.test_id("incr")))
-    |> fable.click(target: query.element(matching: query.test_id("reset")))
-    |> fable.click(target: query.element(matching: query.test_id("decr")))
+    |> simulate.click(on: query.element(matching: query.test_id("incr")))
+    |> simulate.click(on: query.element(matching: query.test_id("incr")))
+    |> simulate.click(on: query.element(matching: query.test_id("reset")))
+    |> simulate.click(on: query.element(matching: query.test_id("decr")))
   })
 }

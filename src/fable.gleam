@@ -4,12 +4,8 @@ import fable/internal/book.{type Message, type Model}
 import fable/internal/story
 import gleam/bool
 import gleam/function
-import gleam/json
-import gleam/list
 import gleam/result
-import gleam/string
 import lustre
-import lustre/dev/query.{type Query}
 import lustre/dev/simulate.{type App, type Simulation}
 import lustre/portal
 
@@ -76,61 +72,6 @@ pub fn static_scene(
   init arguments: arguments,
 ) -> Scene(arguments, model, message) {
   story.scene(name, arguments, function.identity)
-}
-
-// SIMULATED INTERACTIONS ------------------------------------------------------
-
-///
-/// 
-pub fn click(
-  simulation: Simulation(model, message),
-  target element: Query,
-) -> Simulation(model, message) {
-  simulate.event(simulation, on: element, name: "click", data: [])
-}
-
-///
-/// 
-pub fn input(
-  simulation: Simulation(model, message),
-  target element: Query,
-  from start: String,
-  enter text: String,
-) -> Simulation(model, message) {
-  let characters = string.to_graphemes(text)
-  let values = list.scan(characters, start, string.append)
-  use simulation, value <- list.fold(values, simulation)
-
-  simulate.event(simulation, on: element, name: "input", data: [
-    #("target", {
-      json.object([
-        #("value", json.string(value)),
-      ])
-    }),
-  ])
-}
-
-///
-/// 
-pub fn submit(
-  simulation: Simulation(model, message),
-  target element: Query,
-  fields fields: List(#(String, String)),
-) -> Simulation(model, message) {
-  simulate.event(simulation, on: element, name: "submit", data: [
-    #("detail", {
-      json.object([
-        #("formData", {
-          json.array(fields, fn(field) {
-            json.preprocessed_array([
-              json.string(field.0),
-              json.string(field.1),
-            ])
-          })
-        }),
-      ])
-    }),
-  ])
 }
 
 //

@@ -31,7 +31,7 @@ pub opaque type Chapter {
 pub fn new(name: String, chapters: List(Chapter)) -> Book {
   Book(name:, chapters: {
     list.fold(chapters, dict.new(), fn(acc, chapter) {
-      dict.insert(acc, justin.kebab_case(name), chapter)
+      dict.insert(acc, justin.kebab_case(chapter.name), chapter)
     })
   })
 }

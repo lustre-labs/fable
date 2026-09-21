@@ -1,15 +1,21 @@
 import { Some, None } from "../../../gleam_stdlib/gleam/option.mjs";
 import { Uri } from "../../../gleam_stdlib/gleam/uri.mjs";
 
+// These functions are vendored from `modem` but have been very slightly modified
+// so that the root element to attach the click listener can be specified. This
+// is necessary for fable beacuse the app sits inside a shadow root and modem
+// will not cross (or even detect) the shadow root boundary when walking the
+// event target tree.
+
 export const initRouter = (root, dispatch) => {
   root.addEventListener("click", (event) => {
-    const a = find_anchor(event.target);
+    const a = findAnchor(event.target);
 
     if (!a) return;
     if (!URL.canParse(a.href)) return;
 
     const url = new URL(a.href);
-    const uri = uri_from_url(url);
+    const uri = uriFromUrl(url);
     const is_external =
       url.host !== window.location.host || a.target === "_blank";
 
@@ -41,7 +47,7 @@ export const initRouter = (root, dispatch) => {
     e.preventDefault();
 
     const url = new URL(window.location.href);
-    const uri = uri_from_url(url);
+    const uri = uriFromUrl(url);
 
     window.requestAnimationFrame(() => {
       if (url.hash) {
@@ -64,17 +70,17 @@ export const initRouter = (root, dispatch) => {
   });
 };
 
-const find_anchor = (el) => {
+const findAnchor = (el) => {
   if (!el || el.tagName === "BODY") {
     return null;
   } else if (el.tagName === "A") {
     return el;
   } else {
-    return find_anchor(el.parentElement);
+    return findAnchor(el.parentElement);
   }
 };
 
-const uri_from_url = (url) => {
+const uriFromUrl = (url) => {
   return new Uri(
     /* scheme   */ url.protocol
       ? new Some(url.protocol.slice(0, -1))

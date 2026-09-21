@@ -4,6 +4,7 @@ import fable/internal/route.{type Route, Index, SceneDisplay, SceneSelect}
 import fable/internal/story.{type Scene, type Story}
 import gleam/bool
 import gleam/dict.{type Dict}
+import gleam/dynamic.{type Dynamic}
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
@@ -20,11 +21,7 @@ import modem
 // TYPES -----------------------------------------------------------------------
 
 pub opaque type Book {
-  Book(
-    name: String,
-    chapters: Dict(String, Chapter),
-    head: List(Element(Message)),
-  )
+  Book(name: String, chapters: Dict(String, Chapter))
 }
 
 pub opaque type Chapter {
@@ -34,7 +31,7 @@ pub opaque type Chapter {
 // CONSTRUCTORS ----------------------------------------------------------------
 
 pub fn new(name: String, chapters: List(Chapter)) -> Book {
-  Book(name:, head: [], chapters: {
+  Book(name:, chapters: {
     list.fold(chapters, dict.new(), fn(acc, chapter) {
       use <- bool.guard(dict.size(chapter.stories) == 0, acc)
 
@@ -54,9 +51,7 @@ pub fn chapter(name: String, stories: List(Story)) -> Chapter {
 }
 
 pub fn app() -> App(Book, Model, Message) {
-  lustre.application(init:, update:, view: fn(model) {
-    element.fragment([html.style([], styles), view(model)])
-  })
+  lustre.application(init:, update:, view:)
 }
 
 // QUERIES ---------------------------------------------------------------------
@@ -72,12 +67,6 @@ fn lookup_story(
   }
 }
 
-// MANIPULATIONS ---------------------------------------------------------------
-
-pub fn add_to_head(book: Book, element: Element(Message)) -> Book {
-  Book(..book, head: [element, ..book.head])
-}
-
 // MODEL -----------------------------------------------------------------------
 
 pub opaque type Model {
@@ -86,7 +75,6 @@ pub opaque type Model {
     chapters: Dict(String, Chapter),
     route: Route,
     scene: Option(Scene),
-    head: List(Element(Message)),
   )
 }
 
@@ -129,20 +117,34 @@ fn init(book: Book) -> #(Model, Effect(Message)) {
     _ -> None
   }
 
-  let head = list.reverse(book.head)
-  let model =
-    Model(name: book.name, chapters: book.chapters, route:, scene:, head:)
+  let model = Model(name: book.name, chapters: book.chapters, route:, scene:)
 
   let effect =
-    modem.init(fn(request) {
-      case route.from_uri(request) {
-        Ok(route) -> UserClickedInternalLink(route:)
-        Error(_) -> UserClickedExternalLink(to: request)
-      }
-    })
+    effect.batch([
+      case scene {
+        Some(_) -> story.inject_interesting_elements()
+        None -> effect.none()
+      },
+
+      init_router(),
+    ])
 
   #(model, effect)
 }
+
+fn init_router() -> Effect(Message) {
+  use dispatch, shadow_root <- effect.before_paint
+  use request <- do_init_router(shadow_root)
+  let message = case route.from_uri(request) {
+    Ok(route) -> UserClickedInternalLink(route:)
+    Error(_) -> UserClickedExternalLink(to: request)
+  }
+
+  dispatch(message)
+}
+
+@external(javascript, "./book.ffi.mjs", "initRouter")
+fn do_init_router(root: Dynamic, dispatch: fn(Uri) -> Nil) -> Nil
 
 // UPDATE ----------------------------------------------------------------------
 
@@ -196,8 +198,9 @@ fn update(model: Model, message: Message) -> #(Model, Effect(Message)) {
           case scene {
             Ok(scene) -> {
               let model = Model(..model, route:, scene: Some(scene))
+              let effect = story.inject_interesting_elements()
 
-              #(model, effect.none())
+              #(model, effect)
             }
 
             Error(_) -> {
@@ -263,8 +266,7 @@ fn view(model: Model) -> Element(Message) {
     case model.route {
       SceneSelect(chapter:, story:) | SceneDisplay(chapter:, story:, ..) ->
         case lookup_story(model.chapters, chapter, story) {
-          Ok(story) ->
-            story.view(chapter, story, model.scene, model.head, story_handlers)
+          Ok(story) -> story.view(chapter, story, model.scene, story_handlers)
 
           Error(_) -> element.none()
         }
@@ -310,8 +312,3 @@ fn view_sidebar_chapter(chapter: Chapter, key: String) -> Element(Message) {
     }),
   ])
 }
-
-// UTILS -----------------------------------------------------------------------
-
-//cog:embed assets/styles.css
-const styles = ""

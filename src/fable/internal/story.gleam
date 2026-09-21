@@ -17,6 +17,7 @@ import lustre/dev/query
 import lustre/dev/simulate.{
   type App, type Event, type Simulation, Dispatch, Event, Problem,
 }
+import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html
 import lustre/element/keyed
@@ -131,6 +132,16 @@ pub fn resize(scene: Scene, width: Int, height: Int) -> Scene {
   Scene(..scene, computed_dimensions: Some(#(width, height)))
 }
 
+// EFFECTS ---------------------------------------------------------------------
+
+pub fn inject_interesting_elements() -> Effect(message) {
+  use _, root <- effect.before_paint
+  do_inject_interesting_elements(root)
+}
+
+@external(javascript, "./story.ffi.mjs", "injectInterestingElements")
+fn do_inject_interesting_elements(shadow_root: Dynamic) -> Nil
+
 // VIEWS -----------------------------------------------------------------------
 
 pub type Handlers(message) {
@@ -147,14 +158,13 @@ pub fn view(
   chapter: String,
   story: Story,
   scene: Option(Scene),
-  head: List(Element(message)),
   handlers: Handlers(message),
 ) -> Element(message) {
   case scene {
     Some(scene) ->
       element.fragment([
         view_story_sidebar(chapter, story, Some(scene), handlers),
-        view_scene(scene, head, handlers),
+        view_scene(scene, handlers),
       ])
 
     None ->
@@ -283,11 +293,7 @@ fn view_scene_model(scene: Scene) -> Element(message) {
   ])
 }
 
-fn view_scene(
-  scene: Scene,
-  head: List(Element(message)),
-  handlers: Handlers(message),
-) -> Element(message) {
+fn view_scene(scene: Scene, handlers: Handlers(message)) -> Element(message) {
   html.main([attribute.class("scene")], [
     html.div([attribute.class("controls")], [
       html.button([event.on_click(handlers.on_restart)], [
@@ -321,7 +327,7 @@ fn view_scene(
     keyed.div([attribute.class("inner")], [
       #(
         int.to_string(scene.key),
-        view_scene_renderer(scene, head, handlers.on_scene_message),
+        view_scene_renderer(scene, handlers.on_scene_message),
       ),
     ]),
   ])
@@ -329,7 +335,6 @@ fn view_scene(
 
 fn view_scene_renderer(
   scene: Scene,
-  head: List(Element(message)),
   handle_scene_message: message,
 ) -> Element(message) {
   element.fragment([
@@ -351,18 +356,9 @@ fn view_scene_renderer(
         |> option.lazy_unwrap(attribute.none),
     ]),
 
-    portal.to("iframe", [], [
-      html.html([], [
-        html.head([], [
-          html.title([], scene.name),
-          element.fragment(head),
-        ]),
-
-        html.body([], [
-          simulate.view(scene.simulation)
-          |> element.map(fn(_) { handle_scene_message }),
-        ]),
-      ]),
+    portal.to("iframe", [portal.root(portal.Relative)], [
+      simulate.view(scene.simulation)
+      |> element.map(fn(_) { handle_scene_message }),
     ]),
   ])
 }

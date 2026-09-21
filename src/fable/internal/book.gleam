@@ -2,6 +2,7 @@
 
 import fable/internal/route.{type Route, Index, SceneDisplay, SceneSelect}
 import fable/internal/story.{type Scene, type Story}
+import gleam/bool
 import gleam/dict.{type Dict}
 import gleam/list
 import gleam/option.{type Option, None, Some}
@@ -19,7 +20,11 @@ import modem
 // TYPES -----------------------------------------------------------------------
 
 pub opaque type Book {
-  Book(name: String, chapters: Dict(String, Chapter))
+  Book(
+    name: String,
+    chapters: Dict(String, Chapter),
+    head: List(Element(Message)),
+  )
 }
 
 pub opaque type Chapter {
@@ -29,8 +34,10 @@ pub opaque type Chapter {
 // CONSTRUCTORS ----------------------------------------------------------------
 
 pub fn new(name: String, chapters: List(Chapter)) -> Book {
-  Book(name:, chapters: {
+  Book(name:, head: [], chapters: {
     list.fold(chapters, dict.new(), fn(acc, chapter) {
+      use <- bool.guard(dict.size(chapter.stories) == 0, acc)
+
       dict.insert(acc, justin.kebab_case(chapter.name), chapter)
     })
   })
@@ -39,6 +46,8 @@ pub fn new(name: String, chapters: List(Chapter)) -> Book {
 pub fn chapter(name: String, stories: List(Story)) -> Chapter {
   Chapter(name:, stories: {
     list.fold(stories, dict.new(), fn(acc, story) {
+      use <- bool.guard(dict.size(story.scenes) == 0, acc)
+
       dict.insert(acc, story.slug, story)
     })
   })
@@ -63,6 +72,12 @@ fn lookup_story(
   }
 }
 
+// MANIPULATIONS ---------------------------------------------------------------
+
+pub fn add_to_head(book: Book, element: Element(Message)) -> Book {
+  Book(..book, head: [element, ..book.head])
+}
+
 // MODEL -----------------------------------------------------------------------
 
 pub opaque type Model {
@@ -71,16 +86,42 @@ pub opaque type Model {
     chapters: Dict(String, Chapter),
     route: Route,
     scene: Option(Scene),
+    head: List(Element(Message)),
   )
 }
 
 fn init(book: Book) -> #(Model, Effect(Message)) {
   let assert Ok(here) = modem.initial_uri()
-  let route = route.from_uri(here) |> result.unwrap(Index)
+
+  let route = case route.from_uri(here) {
+    Ok(SceneSelect(chapter:, story:) as route) -> {
+      let story =
+        book.chapters
+        |> dict.get(chapter)
+        |> result.try(fn(chapter) { dict.get(chapter.stories, story) })
+
+      let scenes =
+        story
+        |> result.map(fn(story) { dict.size(story.scenes) })
+        |> result.unwrap(0)
+
+      case story {
+        Ok(story) if scenes == 1 ->
+          SceneDisplay(chapter:, story: story.slug, scene: 0)
+
+        Ok(_) | Error(_) -> route
+      }
+    }
+
+    Ok(route) -> route
+
+    Error(_) -> Index
+  }
 
   let scene = case route {
     SceneDisplay(chapter:, story:, scene:) ->
-      dict.get(book.chapters, chapter)
+      book.chapters
+      |> dict.get(chapter)
       |> result.try(fn(chapter) { dict.get(chapter.stories, story) })
       |> result.try(story.start(_, scene))
       |> option.from_result
@@ -88,7 +129,9 @@ fn init(book: Book) -> #(Model, Effect(Message)) {
     _ -> None
   }
 
-  let model = Model(name: book.name, chapters: book.chapters, route:, scene:)
+  let head = list.reverse(book.head)
+  let model =
+    Model(name: book.name, chapters: book.chapters, route:, scene:, head:)
 
   let effect =
     modem.init(fn(request) {
@@ -121,6 +164,29 @@ fn update(model: Model, message: Message) -> #(Model, Effect(Message)) {
 
     UserClickedInternalLink(route:) ->
       case route {
+        SceneSelect(chapter:, story:) -> {
+          let story =
+            dict.get(model.chapters, chapter)
+            |> result.try(fn(chapter) { dict.get(chapter.stories, story) })
+
+          let scenes =
+            story
+            |> result.map(fn(story) { dict.size(story.scenes) })
+            |> result.unwrap(0)
+
+          case story {
+            Ok(story) if scenes == 1 -> #(
+              Model(..model, route:, scene: None),
+              route.push(SceneDisplay(chapter:, story: story.slug, scene: 0)),
+            )
+
+            Ok(_) | Error(_) -> #(
+              Model(..model, route:, scene: None),
+              effect.none(),
+            )
+          }
+        }
+
         SceneDisplay(chapter:, story:, scene:) -> {
           let scene =
             dict.get(model.chapters, chapter)
@@ -195,18 +261,10 @@ fn view(model: Model) -> Element(Message) {
     view_sidebar(model.name, model.chapters),
 
     case model.route {
-      SceneSelect(..) as route ->
-        case lookup_story(model.chapters, route.chapter, route.story) {
+      SceneSelect(chapter:, story:) | SceneDisplay(chapter:, story:, ..) ->
+        case lookup_story(model.chapters, chapter, story) {
           Ok(story) ->
-            story.view(route.chapter, story, model.scene, story_handlers)
-
-          Error(_) -> element.none()
-        }
-
-      SceneDisplay(..) as route ->
-        case lookup_story(model.chapters, route.chapter, route.story) {
-          Ok(story) ->
-            story.view(route.chapter, story, model.scene, story_handlers)
+            story.view(chapter, story, model.scene, model.head, story_handlers)
 
           Error(_) -> element.none()
         }

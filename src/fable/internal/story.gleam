@@ -147,18 +147,19 @@ pub fn view(
   chapter: String,
   story: Story,
   scene: Option(Scene),
+  head: List(Element(message)),
   handlers: Handlers(message),
 ) -> Element(message) {
   case scene {
     Some(scene) ->
       element.fragment([
         view_story_sidebar(chapter, story, Some(scene), handlers),
-        view_scene(scene, handlers),
+        view_scene(scene, head, handlers),
       ])
 
     None ->
       element.fragment([
-        view_story_sidebar(chapter, story, scene, handlers),
+        view_story_sidebar(chapter, story, None, handlers),
       ])
   }
 }
@@ -179,6 +180,8 @@ fn view_story_sidebar(
 
 fn view_scene_select(chapter: String, story: Story) -> Element(message) {
   use <- element.memo([element.ref(chapter), element.ref(story.scenes)])
+  use <- bool.lazy_guard(dict.size(story.scenes) <= 1, element.none)
+
   let keys = dict.keys(story.scenes) |> list.sort(int.compare)
 
   html.div([], [
@@ -202,7 +205,7 @@ fn view_scene_history(
   handlers: Handlers(message),
 ) -> Element(message) {
   let events = simulate.history(scene.simulation)
-  use <- bool.guard(list.is_empty(events), element.none())
+  use <- bool.lazy_guard(list.is_empty(events), element.none)
 
   html.div([attribute.class("history")], [
     html.h4([], [html.text("History")]),
@@ -280,7 +283,11 @@ fn view_scene_model(scene: Scene) -> Element(message) {
   ])
 }
 
-fn view_scene(scene: Scene, handlers: Handlers(message)) -> Element(message) {
+fn view_scene(
+  scene: Scene,
+  head: List(Element(message)),
+  handlers: Handlers(message),
+) -> Element(message) {
   html.main([attribute.class("scene")], [
     html.div([attribute.class("controls")], [
       html.button([event.on_click(handlers.on_restart)], [
@@ -314,7 +321,7 @@ fn view_scene(scene: Scene, handlers: Handlers(message)) -> Element(message) {
     keyed.div([attribute.class("inner")], [
       #(
         int.to_string(scene.key),
-        view_scene_renderer(scene, handlers.on_scene_message),
+        view_scene_renderer(scene, head, handlers.on_scene_message),
       ),
     ]),
   ])
@@ -322,6 +329,7 @@ fn view_scene(scene: Scene, handlers: Handlers(message)) -> Element(message) {
 
 fn view_scene_renderer(
   scene: Scene,
+  head: List(Element(message)),
   handle_scene_message: message,
 ) -> Element(message) {
   element.fragment([
@@ -345,6 +353,11 @@ fn view_scene_renderer(
 
     portal.to("iframe", [], [
       html.html([], [
+        html.head([], [
+          html.title([], scene.name),
+          element.fragment(head),
+        ]),
+
         html.body([], [
           simulate.view(scene.simulation)
           |> element.map(fn(_) { handle_scene_message }),

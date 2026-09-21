@@ -8,8 +8,10 @@ import gleam/list
 import gleam/result
 import gleam/string
 import lustre
+import lustre/attribute
 import lustre/dev/query.{type Query}
 import lustre/dev/simulate.{type App, type Simulation}
+import lustre/element/html
 import lustre/portal
 
 // TYPES -----------------------------------------------------------------------
@@ -75,6 +77,25 @@ pub fn static_scene(
   init arguments: arguments,
 ) -> Scene(arguments, model, message) {
   story.scene(name, arguments, function.identity)
+}
+
+// MANIPULATIONS ---------------------------------------------------------------
+
+pub fn with_stylesheet(
+  book: Book,
+  href: String,
+  crossorigin crossorigin: Bool,
+) -> Book {
+  book.add_to_head(book, case crossorigin {
+    True ->
+      html.link([
+        attribute.href(href),
+        attribute.rel("stylesheet"),
+        attribute.crossorigin("anonymous"),
+      ])
+
+    False -> html.link([attribute.href(href), attribute.rel("stylesheet")])
+  })
 }
 
 // SIMULATED INTERACTIONS ------------------------------------------------------

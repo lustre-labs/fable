@@ -56,13 +56,25 @@ pub fn app() -> App(Book, Model, Message) {
 
 // QUERIES ---------------------------------------------------------------------
 
-fn lookup_story(
+fn find_story(
   chapters: Dict(String, Chapter),
   chapter: String,
   story: String,
 ) -> Result(Story, Nil) {
   case dict.get(chapters, chapter) {
     Ok(chapter) -> dict.get(chapter.stories, story)
+    Error(_) -> Error(Nil)
+  }
+}
+
+fn find_scene(
+  chapters: Dict(String, Chapter),
+  chapter: String,
+  story: String,
+  scene: Int,
+) -> Result(Scene, Nil) {
+  case find_story(chapters, chapter, story) {
+    Ok(story) -> story.start(story, scene)
     Error(_) -> Error(Nil)
   }
 }
@@ -166,11 +178,10 @@ fn update(model: Model, message: Message) -> #(Model, Effect(Message)) {
 
     UserClickedInternalLink(route:) ->
       case route {
-        SceneSelect(chapter:, story:) -> {
-          let story =
-            dict.get(model.chapters, chapter)
-            |> result.try(fn(chapter) { dict.get(chapter.stories, story) })
+        Index -> #(Model(..model, route:, scene: None), effect.none())
 
+        SceneSelect(chapter:, story:) -> {
+          let story = find_story(model.chapters, chapter, story)
           let scenes =
             story
             |> result.map(fn(story) { dict.size(story.scenes) })
@@ -189,13 +200,8 @@ fn update(model: Model, message: Message) -> #(Model, Effect(Message)) {
           }
         }
 
-        SceneDisplay(chapter:, story:, scene:) -> {
-          let scene =
-            dict.get(model.chapters, chapter)
-            |> result.try(fn(chapter) { dict.get(chapter.stories, story) })
-            |> result.try(story.start(_, scene))
-
-          case scene {
+        SceneDisplay(chapter:, story:, scene:) ->
+          case find_scene(model.chapters, chapter, story, scene) {
             Ok(scene) -> {
               let model = Model(..model, route:, scene: Some(scene))
               let effect = story.inject_interesting_elements()
@@ -210,13 +216,6 @@ fn update(model: Model, message: Message) -> #(Model, Effect(Message)) {
               #(model, effect)
             }
           }
-        }
-
-        _ -> {
-          let model = Model(..model, route:, scene: None)
-
-          #(model, effect.none())
-        }
       }
 
     UserClickedJump(steps:) -> {
@@ -265,7 +264,7 @@ fn view(model: Model) -> Element(Message) {
 
     case model.route {
       SceneSelect(chapter:, story:) | SceneDisplay(chapter:, story:, ..) ->
-        case lookup_story(model.chapters, chapter, story) {
+        case find_story(model.chapters, chapter, story) {
           Ok(story) -> story.view(chapter, story, model.scene, story_handlers)
 
           Error(_) -> element.none()
@@ -285,30 +284,33 @@ fn view_sidebar(
 
   html.section([attribute.class("sidebar")], [
     html.h1([], [html.text(name)]),
-    element.fragment({
-      list.filter_map(keys, fn(key) {
-        dict.get(chapters, key)
-        |> result.map(view_sidebar_chapter(_, key))
-      })
-    }),
+    element.fragment(list.filter_map(keys, view_sidebar_chapter(_, chapters))),
   ])
 }
 
-fn view_sidebar_chapter(chapter: Chapter, key: String) -> Element(Message) {
-  let stories = dict.keys(chapter.stories) |> list.sort(string.compare)
+fn view_sidebar_chapter(
+  key: String,
+  chapters: Dict(String, Chapter),
+) -> Result(Element(Message), Nil) {
+  use chapter <- result.map(dict.get(chapters, key))
+  let keys = dict.keys(chapter.stories) |> list.sort(string.compare)
 
   html.nav([], [
     html.h2([], [html.text(chapter.name)]),
-    html.ul([], {
-      list.filter_map(stories, fn(story_key) {
-        use story <- result.map(dict.get(chapter.stories, story_key))
+    html.ul([], list.filter_map(keys, view_sidebar_story(_, key, chapter))),
+  ])
+}
 
-        html.li([], [
-          html.a([route.href(SceneSelect(chapter: key, story: story_key))], [
-            html.text(story.name),
-          ]),
-        ])
-      })
-    }),
+fn view_sidebar_story(
+  story: String,
+  key: String,
+  chapter: Chapter,
+) -> Result(Element(Message), Nil) {
+  use story <- result.map(dict.get(chapter.stories, story))
+
+  html.li([], [
+    html.a([route.href(SceneSelect(chapter: key, story: story.slug))], [
+      html.text(story.name),
+    ]),
   ])
 }

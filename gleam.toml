@@ -6,7 +6,7 @@ target = "javascript"
 gleam_json = ">= 3.0.1 and < 4.0.0"
 gleam_stdlib = ">= 0.60.0 and < 2.0.0"
 justin = ">= 1.0.1 and < 2.0.0"
-lustre = { path = "../lustre" }
+lustre = { git = "https://github.com/lustre-labs/lustre.git", ref = "main" }
 lustre_portal = ">= 1.0.0 and < 2.0.0"
 modem = ">= 2.0.0 and < 3.0.0"
 

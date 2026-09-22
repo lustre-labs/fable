@@ -326,7 +326,7 @@ fn view_scene(scene: Scene, handlers: Handlers(message)) -> Element(message) {
 
     keyed.div([attribute.class("inner")], [
       #(
-        int.to_string(scene.key),
+        scene.name <> int.to_string(scene.key),
         view_scene_renderer(scene, handlers.on_scene_message),
       ),
     ]),

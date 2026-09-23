@@ -7,6 +7,7 @@ import gleam/function
 import gleam/result
 import lustre
 import lustre/dev/simulate.{type App, type Simulation}
+import lustre/element.{type Element}
 import lustre/portal
 
 // TYPES -----------------------------------------------------------------------
@@ -49,10 +50,24 @@ pub fn chapter(name name: String, stories stories: List(Story)) -> Chapter {
 /// 
 pub fn story(
   name name: String,
-  template app: App(arguments, model, message),
+  template simulation: App(arguments, model, message),
   scenes scenes: List(Scene(arguments, model, message)),
 ) -> Story {
-  story.new(name, app, scenes)
+  story.new(name, simulation, scenes)
+}
+
+///
+/// 
+pub fn static_story(
+  name name: String,
+  view view: fn(model) -> Element(message),
+  scenes scenes: List(Scene(model, model, message)),
+) -> Story {
+  story.new(
+    name,
+    simulate.simple(function.identity, fn(model, _) { model }, view),
+    scenes,
+  )
 }
 
 ///
@@ -60,18 +75,28 @@ pub fn story(
 pub fn scene(
   name name: String,
   init arguments: arguments,
-  play setup: fn(Simulation(model, message)) -> Simulation(model, message),
 ) -> Scene(arguments, model, message) {
-  story.scene(name, arguments, setup)
+  story.scene(name, arguments, function.identity)
+}
+
+// BUILDERS --------------------------------------------------------------------
+
+///
+/// 
+pub fn default_step(
+  scene: Scene(arguments, model, message),
+  step: Int,
+) -> Scene(arguments, model, message) {
+  story.with_default_step(scene, step)
 }
 
 ///
 /// 
-pub fn static_scene(
-  name name: String,
-  init arguments: arguments,
+pub fn simulate(
+  scene: Scene(arguments, model, message),
+  setup: fn(Simulation(model, message)) -> Simulation(model, message),
 ) -> Scene(arguments, model, message) {
-  story.scene(name, arguments, function.identity)
+  story.with_simulation(scene, setup)
 }
 
 //

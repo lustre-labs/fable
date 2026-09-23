@@ -41,7 +41,8 @@ pub fn setup() -> Story {
 // SCENES ----------------------------------------------------------------------
 
 fn incrementing_scene() -> Scene(Int, Model, Message) {
-  fable.scene(name: "Incrementing", init: 0, play: fn(simulation) {
+  fable.scene(name: "Incrementing", init: 0)
+  |> fable.simulate(fn(simulation) {
     simulation
     |> simulate.click(on: query.element(matching: query.test_id("incr")))
     |> simulate.click(on: query.element(matching: query.test_id("incr")))
@@ -50,11 +51,13 @@ fn incrementing_scene() -> Scene(Int, Model, Message) {
 }
 
 fn reset_scene() -> Scene(Int, Model, Message) {
-  fable.scene(name: "Reset", init: 100, play: fn(simulation) {
+  fable.scene(name: "Reset", init: 100)
+  |> fable.simulate(fn(simulation) {
     simulation
     |> simulate.click(on: query.element(matching: query.test_id("incr")))
     |> simulate.click(on: query.element(matching: query.test_id("incr")))
     |> simulate.click(on: query.element(matching: query.test_id("reset")))
     |> simulate.click(on: query.element(matching: query.test_id("decr")))
   })
+  |> fable.default_step(3)
 }

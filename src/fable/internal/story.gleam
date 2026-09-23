@@ -51,6 +51,7 @@ pub opaque type SceneConfig(arguments, model, message) {
   SceneConfig(
     name: String,
     arguments: arguments,
+    default_step: Int,
     setup: fn(Simulation(model, message)) -> Simulation(model, message),
   )
 }
@@ -76,7 +77,23 @@ pub fn scene(
   arguments: arguments,
   simulation: fn(Simulation(model, message)) -> Simulation(model, message),
 ) -> SceneConfig(arguments, model, message) {
-  SceneConfig(name:, arguments:, setup: simulation)
+  SceneConfig(name:, arguments:, default_step: 0, setup: simulation)
+}
+
+// BUILDERS --------------------------------------------------------------------
+
+pub fn with_default_step(
+  scene: SceneConfig(arguments, model, message),
+  step: Int,
+) -> SceneConfig(arguments, model, message) {
+  SceneConfig(..scene, default_step: step)
+}
+
+pub fn with_simulation(
+  scene: SceneConfig(arguments, model, message),
+  setup: fn(Simulation(model, message)) -> Simulation(model, message),
+) -> SceneConfig(arguments, model, message) {
+  SceneConfig(..scene, setup:)
 }
 
 // MANIPULATIONS ---------------------------------------------------------------
@@ -89,11 +106,12 @@ pub fn start(story: Story, id: Int) -> Result(Scene, Nil) {
     |> simulate.restart
 
   let step_count = simulate.history(simulation) |> list.length
+  let step = int.max(0, int.min(step_count, config.default_step))
 
   Scene(
     name: config.name,
     key: 0,
-    step: 0,
+    step:,
     step_count:,
     arguments: coerce(config.arguments),
     simulation:,

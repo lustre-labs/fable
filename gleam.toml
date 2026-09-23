@@ -11,7 +11,7 @@ lustre_portal = ">= 1.0.0 and < 2.0.0"
 modem = ">= 2.0.0 and < 3.0.0"
 
 [dev_dependencies]
-lustre_dev_tools = ">= 2.3.6 and < 3.0.0"
+lustre_dev_tools = ">= 2.4.0 and < 3.0.0"
 cog = ">= 2.0.3 and < 3.0.0"
 
 [tools.lustre.dev]

@@ -156,7 +156,9 @@ fn init_router() -> Effect(Message) {
 }
 
 @external(javascript, "./book.ffi.mjs", "initRouter")
-fn do_init_router(root: Dynamic, dispatch: fn(Uri) -> Nil) -> Nil
+fn do_init_router(_root: Dynamic, _dispatch: fn(Uri) -> Nil) -> Nil {
+  Nil
+}
 
 // UPDATE ----------------------------------------------------------------------
 

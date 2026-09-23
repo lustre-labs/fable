@@ -92,10 +92,14 @@ pub fn start(book: Book) -> Result(Nil, lustre.Error) {
 }
 
 @external(javascript, "./fable.ffi.mjs", "isIframe")
-fn is_iframe() -> Bool
+fn is_iframe() -> Bool {
+  False
+}
 
 @external(javascript, "./fable.ffi.mjs", "isolatedStart")
 fn isolated_start(
-  app: lustre.App(Book, Model, Message),
-  book: Book,
-) -> Result(Nil, lustre.Error)
+  _app: lustre.App(Book, Model, Message),
+  _book: Book,
+) -> Result(Nil, lustre.Error) {
+  Error(lustre.NotABrowser)
+}

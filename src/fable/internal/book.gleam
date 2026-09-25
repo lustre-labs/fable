@@ -8,7 +8,6 @@ import gleam/dynamic.{type Dynamic}
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
-import gleam/string
 import gleam/uri.{type Uri}
 import justin
 import lustre.{type App}
@@ -21,33 +20,39 @@ import modem
 // TYPES -----------------------------------------------------------------------
 
 pub opaque type Book {
-  Book(name: String, chapters: Dict(String, Chapter))
+  Book(name: String, order: List(String), chapters: Dict(String, Chapter))
 }
 
 pub opaque type Chapter {
-  Chapter(name: String, stories: Dict(String, Story))
+  Chapter(name: String, order: List(String), stories: Dict(String, Story))
 }
 
 // CONSTRUCTORS ----------------------------------------------------------------
 
 pub fn new(name: String, chapters: List(Chapter)) -> Book {
-  Book(name:, chapters: {
+  let order =
+    list.map(chapters, fn(chapter) { justin.kebab_case(chapter.name) })
+
+  let chapters =
     list.fold(chapters, dict.new(), fn(acc, chapter) {
       use <- bool.guard(dict.size(chapter.stories) == 0, acc)
 
       dict.insert(acc, justin.kebab_case(chapter.name), chapter)
     })
-  })
+
+  Book(name:, order:, chapters:)
 }
 
 pub fn chapter(name: String, stories: List(Story)) -> Chapter {
-  Chapter(name:, stories: {
+  let order = list.map(stories, fn(story) { story.slug })
+  let stories =
     list.fold(stories, dict.new(), fn(acc, story) {
       use <- bool.guard(dict.size(story.scenes) == 0, acc)
 
       dict.insert(acc, story.slug, story)
     })
-  })
+
+  Chapter(name:, order:, stories:)
 }
 
 pub fn app() -> App(Book, Model, Message) {
@@ -84,6 +89,7 @@ fn find_scene(
 pub opaque type Model {
   Model(
     name: String,
+    order: List(String),
     chapters: Dict(String, Chapter),
     route: Route,
     scene: Option(Scene),
@@ -129,7 +135,14 @@ fn init(book: Book) -> #(Model, Effect(Message)) {
     _ -> None
   }
 
-  let model = Model(name: book.name, chapters: book.chapters, route:, scene:)
+  let model =
+    Model(
+      name: book.name,
+      order: book.order,
+      chapters: book.chapters,
+      route:,
+      scene:,
+    )
 
   let effect =
     effect.batch([
@@ -262,7 +275,7 @@ const story_handlers = story.Handlers(
 
 fn view(model: Model) -> Element(Message) {
   element.fragment([
-    view_sidebar(model.name, model.chapters),
+    view_sidebar(model.name, model.order, model.chapters),
 
     case model.route {
       SceneSelect(chapter:, story:) | SceneDisplay(chapter:, story:, ..) ->
@@ -279,14 +292,14 @@ fn view(model: Model) -> Element(Message) {
 
 fn view_sidebar(
   name: String,
+  order: List(String),
   chapters: Dict(String, Chapter),
 ) -> Element(Message) {
   use <- element.memo([element.ref(chapters)])
-  let keys = dict.keys(chapters) |> list.sort(string.compare)
 
   html.section([attribute.class("sidebar")], [
     html.h1([], [html.text(name)]),
-    element.fragment(list.filter_map(keys, view_sidebar_chapter(_, chapters))),
+    element.fragment(list.filter_map(order, view_sidebar_chapter(_, chapters))),
   ])
 }
 
@@ -295,11 +308,13 @@ fn view_sidebar_chapter(
   chapters: Dict(String, Chapter),
 ) -> Result(Element(Message), Nil) {
   use chapter <- result.map(dict.get(chapters, key))
-  let keys = dict.keys(chapter.stories) |> list.sort(string.compare)
 
   html.nav([], [
     html.h2([], [html.text(chapter.name)]),
-    html.ul([], list.filter_map(keys, view_sidebar_story(_, key, chapter))),
+    html.ul(
+      [],
+      list.filter_map(chapter.order, view_sidebar_story(_, key, chapter)),
+    ),
   ])
 }
 

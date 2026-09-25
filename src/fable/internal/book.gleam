@@ -191,29 +191,21 @@ fn update(model: Model, message: Message) -> #(Model, Effect(Message)) {
 
     UserClickedExternalLink(to: uri) -> #(model, modem.load(uri))
 
-    UserClickedInternalLink(route:) ->
+    UserClickedInternalLink(route:) -> {
+      use <- bool.guard(route == model.route, #(model, effect.none()))
+
       case route {
         Index -> #(Model(..model, route:, scene: None), effect.none())
 
-        SceneSelect(chapter:, story:) -> {
-          let story = find_story(model.chapters, chapter, story)
-          let scenes =
-            story
-            |> result.map(fn(story) { dict.size(story.scenes) })
-            |> result.unwrap(0)
-
-          case story {
-            Ok(story) if scenes == 1 -> #(
+        SceneSelect(chapter:, story:) ->
+          case find_story(model.chapters, chapter, story) {
+            Ok(story) -> #(
               Model(..model, route:, scene: None),
               route.push(SceneDisplay(chapter:, story: story.slug, scene: 0)),
             )
 
-            Ok(_) | Error(_) -> #(
-              Model(..model, route:, scene: None),
-              effect.none(),
-            )
+            Error(_) -> #(Model(..model, route:, scene: None), effect.none())
           }
-        }
 
         SceneDisplay(chapter:, story:, scene:) ->
           case find_scene(model.chapters, chapter, story, scene) {
@@ -232,7 +224,7 @@ fn update(model: Model, message: Message) -> #(Model, Effect(Message)) {
             }
           }
       }
-
+    }
     UserClickedJump(steps:) -> {
       let scene = model.scene |> option.map(story.jump(_, steps))
       let model = Model(..model, scene:)
@@ -275,7 +267,7 @@ const story_handlers = story.Handlers(
 
 fn view(model: Model) -> Element(Message) {
   element.fragment([
-    view_sidebar(model.name, model.order, model.chapters),
+    view_sidebar(model.name, model.route, model.order, model.chapters),
 
     case model.route {
       SceneSelect(chapter:, story:) | SceneDisplay(chapter:, story:, ..) ->
@@ -292,20 +284,22 @@ fn view(model: Model) -> Element(Message) {
 
 fn view_sidebar(
   name: String,
+  route: Route,
   order: List(String),
   chapters: Dict(String, Chapter),
 ) -> Element(Message) {
-  use <- element.memo([element.ref(chapters)])
-
   html.section([attribute.class("sidebar")], [
     html.h1([], [html.text(name)]),
-    element.fragment(list.filter_map(order, view_sidebar_chapter(_, chapters))),
+    element.fragment(
+      list.filter_map(order, view_sidebar_chapter(_, chapters, route)),
+    ),
   ])
 }
 
 fn view_sidebar_chapter(
   key: String,
   chapters: Dict(String, Chapter),
+  route: Route,
 ) -> Result(Element(Message), Nil) {
   use chapter <- result.map(dict.get(chapters, key))
 
@@ -313,7 +307,7 @@ fn view_sidebar_chapter(
     html.h2([], [html.text(chapter.name)]),
     html.ul(
       [],
-      list.filter_map(chapter.order, view_sidebar_story(_, key, chapter)),
+      list.filter_map(chapter.order, view_sidebar_story(_, key, chapter, route)),
     ),
   ])
 }
@@ -322,12 +316,22 @@ fn view_sidebar_story(
   story: String,
   key: String,
   chapter: Chapter,
+  route: Route,
 ) -> Result(Element(Message), Nil) {
   use story <- result.map(dict.get(chapter.stories, story))
+  let is_active = case route {
+    SceneSelect(chapter: c, story: s)
+    | SceneDisplay(chapter: c, story: s, ..) -> c == key && s == story.slug
+    _ -> False
+  }
 
   html.li([], [
-    html.a([route.href(SceneSelect(chapter: key, story: story.slug))], [
-      html.text(story.name),
-    ]),
+    html.a(
+      [
+        route.href(SceneSelect(chapter: key, story: story.slug)),
+        attribute.classes([#("active", is_active)]),
+      ],
+      [html.text(story.name)],
+    ),
   ])
 }

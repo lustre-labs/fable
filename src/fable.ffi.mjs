@@ -151,6 +151,11 @@ h6 {
   font-family: var(--font-neuton);
 }
 
+a, a:visited {
+  color: inherit;
+  text-decoration: none;
+}
+
 button {
   background: none;
   border: none;
@@ -182,11 +187,39 @@ svg.lucide {
 .sidebar {
   border-right: 1px solid var(--colour-grey-100);
   padding: calc(var(--size-gap) * 4);
+
+  & nav {
+    margin-block-start: calc(var(--size-gap) * 4);
+  }
 }
 
 .story-sidebar {
   padding: calc(var(--size-gap) * 4);
   padding-block-end: 0;
+
+  & .model pre {
+    font-size: calc(var(--size-text) * 0.85);
+    overflow: auto;
+  }
+}
+
+.sidebar, .story-sidebar {
+  a {
+    position: relative;
+  }
+
+  a.active::before {
+    position: absolute;
+    content: '';
+    display: block;
+    width: 4px;
+    height: 4px;
+    border-radius: 100%;
+    background-color: var(--colour-blue-600);
+    top: 50%;
+    left: calc(var(--size-gap) * -2);
+    transform: translateY(-50%);
+  }
 }
 
 .scene {
@@ -247,5 +280,9 @@ svg.lucide {
 
   &:hover:not(.active) {
     background-color: var(--colour-grey-100);
+  }
+
+  & button {
+    display: block;
   }
 }`;

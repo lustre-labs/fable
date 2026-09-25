@@ -23,6 +23,7 @@ import lustre/element/html
 import lustre/element/keyed
 import lustre/event
 import lustre/portal
+import pprint
 
 // TYPES -----------------------------------------------------------------------
 
@@ -38,6 +39,7 @@ pub type Story {
 pub opaque type Scene {
   Scene(
     key: Int,
+    id: Int,
     name: String,
     step: Int,
     step_count: Int,
@@ -110,6 +112,7 @@ pub fn start(story: Story, id: Int) -> Result(Scene, Nil) {
 
   Scene(
     name: config.name,
+    id:,
     key: 0,
     step:,
     step_count:,
@@ -179,11 +182,12 @@ pub fn view(
   handlers: Handlers(message),
 ) -> Element(message) {
   case scene {
-    Some(scene) ->
+    Some(scene) -> {
       element.fragment([
         view_story_sidebar(chapter, story, Some(scene), handlers),
         view_scene(scene, handlers),
       ])
+    }
 
     None ->
       element.fragment([
@@ -199,30 +203,37 @@ fn view_story_sidebar(
   handlers: Handlers(message),
 ) -> Element(message) {
   html.section([attribute.class("story-sidebar")], [
-    view_scene_select(chapter, story),
+    view_scene_select(chapter, story, scene),
     option.map(scene, view_scene_history(_, handlers))
       |> option.lazy_unwrap(element.none),
     option.map(scene, view_scene_model) |> option.lazy_unwrap(element.none),
   ])
 }
 
-fn view_scene_select(chapter: String, story: Story) -> Element(message) {
-  use <- element.memo([element.ref(chapter), element.ref(story.scenes)])
-  use <- bool.lazy_guard(dict.size(story.scenes) <= 1, element.none)
-
+fn view_scene_select(
+  chapter: String,
+  story: Story,
+  scene: Option(Scene),
+) -> Element(message) {
   let keys = dict.keys(story.scenes) |> list.sort(int.compare)
 
   html.div([], [
     html.h4([], [html.text("Scenes")]),
     html.ul([], {
       use id <- list.filter_map(keys)
+      let is_active = case scene {
+        Some(s) -> s.id == id
+        None -> False
+      }
+
       use scene <- result.map(dict.get(story.scenes, id))
       let route = route.SceneDisplay(chapter:, story: story.slug, scene: id)
 
       html.li([], [
-        html.a([route.href(route)], [
-          html.text(scene.name),
-        ]),
+        html.a(
+          [route.href(route), attribute.classes([#("active", is_active)])],
+          [html.text(scene.name)],
+        ),
       ])
     }),
   ])
@@ -300,12 +311,16 @@ fn view_scene_event(
 }
 
 fn view_scene_model(scene: Scene) -> Element(message) {
-  html.div([], [
+  html.div([attribute.class("model")], [
     html.h4([], [html.text("Model")]),
     html.pre([], [
       scene.simulation
       |> simulate.model
-      |> string.inspect
+      |> pprint.with_config(pprint.Config(
+        pprint.Unstyled,
+        pprint.BitArraysAsString,
+        pprint.Labels,
+      ))
       |> html.text,
     ]),
   ])

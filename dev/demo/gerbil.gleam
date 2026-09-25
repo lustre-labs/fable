@@ -100,8 +100,7 @@ fn date_labels_story() -> Story {
         )
       })
 
-    chart.new(x: axis.date(), y: axis.int())
-    |> chart.y_labels_gutter(60)
+    chart.new(x: axis.date(), y: axis.int() |> axis.labels_gutter(60))
     |> chart.add(plot)
     |> chart_view
   }

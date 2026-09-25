@@ -2,7 +2,7 @@
 
 import gleam/bool
 import gleam/int
-import gleam/option.{type Option, None, Some}
+import gleam/option.{None}
 import gleam/uri.{type Uri}
 import lustre/attribute.{type Attribute}
 import lustre/effect.{type Effect}
@@ -43,13 +43,6 @@ pub fn from_uri(request: Uri) -> Result(Route, Uri) {
     [chapter, story] -> Ok(SceneSelect(chapter:, story:))
 
     _ -> Ok(Index)
-  }
-}
-
-fn is_external(request: Option(a), location: Option(a)) -> Bool {
-  case request {
-    None -> False
-    Some(_) -> request != location
   }
 }
 

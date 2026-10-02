@@ -8,7 +8,6 @@ import gleam/dynamic.{type Dynamic}
 import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
-import gleam/pair
 import gleam/result
 import gleam/string
 import justin
@@ -176,58 +175,67 @@ pub type Handlers(message) {
 }
 
 pub fn view(
-  chapter: String,
   story: Story,
+  chapter_name: String,
   scene: Option(Scene),
   handlers: Handlers(message),
 ) -> Element(message) {
-  case scene {
-    Some(scene) -> {
-      element.fragment([
-        view_story_sidebar(chapter, story, Some(scene), handlers),
-        view_scene(scene, handlers),
-      ])
-    }
+  element.fragment([
+    view_story_sidebar(chapter_name, story, scene, handlers),
 
-    None ->
-      element.fragment([
-        view_story_sidebar(chapter, story, None, handlers),
-      ])
-  }
+    case scene {
+      Some(scene) -> {
+        view_scene(scene, story, chapter_name, handlers)
+      }
+      None -> element.none()
+    },
+  ])
 }
 
 fn view_story_sidebar(
-  chapter: String,
+  chapter_name: String,
   story: Story,
   scene: Option(Scene),
   handlers: Handlers(message),
 ) -> Element(message) {
   html.section([attribute.class("story-sidebar")], [
-    view_scene_select(chapter, story, scene),
-    option.map(scene, view_scene_history(_, handlers))
-      |> option.lazy_unwrap(element.none),
-    option.map(scene, view_scene_model) |> option.lazy_unwrap(element.none),
+    view_scene_select(chapter_name, story, scene),
+
+    case scene {
+      Some(scene) ->
+        element.fragment([
+          view_scene_history(scene, handlers),
+          view_scene_model(scene),
+        ])
+
+      None -> element.none()
+    },
   ])
 }
 
 fn view_scene_select(
-  chapter: String,
+  chapter_name: String,
   story: Story,
   scene: Option(Scene),
 ) -> Element(message) {
-  let keys = dict.keys(story.scenes) |> list.sort(int.compare)
-
   html.div([], [
     html.h4([], [html.text("Scenes")]),
     html.ul([], {
+      let keys = dict.keys(story.scenes) |> list.sort(int.compare)
       use id <- list.filter_map(keys)
+
       let is_active = case scene {
         Some(s) -> s.id == id
         None -> False
       }
 
       use scene <- result.map(dict.get(story.scenes, id))
-      let route = route.SceneDisplay(chapter:, story: story.slug, scene: id)
+      let route =
+        route.SceneDisplay(
+          chapter: justin.kebab_case(chapter_name),
+          story: story.slug,
+          scene: id,
+        )
 
       html.li([], [
         html.a(
@@ -326,43 +334,85 @@ fn view_scene_model(scene: Scene) -> Element(message) {
   ])
 }
 
-fn view_scene(scene: Scene, handlers: Handlers(message)) -> Element(message) {
+fn view_scene(
+  scene: Scene,
+  story: Story,
+  chapter_name: String,
+  handlers: Handlers(message),
+) -> Element(message) {
   html.main([attribute.class("scene")], [
-    html.div([attribute.class("controls")], [
-      html.button([event.on_click(handlers.on_restart)], [
-        icon.refresh([]),
+    html.header([], [
+      html.h2([], [
+        html.small([], [
+          html.text(chapter_name <> " › " <> story.name),
+        ]),
+        html.text(scene.name),
       ]),
-
-      html.button([event.on_click(handlers.on_jump(-scene.step))], [
-        icon.chevron_double_left([]),
-      ]),
-
-      html.button([event.on_click(handlers.on_step_backward)], [
-        icon.chevron_left([]),
-      ]),
-
-      html.p([attribute.class("step-count")], [
-        html.text(int.to_string(scene.step)),
-        html.text(" / "),
-        html.text(int.to_string(scene.step_count)),
-      ]),
-
-      html.button([event.on_click(handlers.on_step_forward)], [
-        icon.chevron_right([]),
-      ]),
-
-      html.button(
-        [event.on_click(handlers.on_jump(scene.step_count - scene.step))],
-        [icon.chevron_double_right([])],
-      ),
+      case scene.step_count {
+        0 | 1 -> element.none()
+        _ -> view_scene_controls(scene, handlers)
+      },
     ]),
-
     keyed.div([attribute.class("inner")], [
       #(
-        scene.name <> int.to_string(scene.key),
+        scene.name <> "/" <> int.to_string(scene.key),
         view_scene_renderer(scene, handlers.on_scene_message),
       ),
     ]),
+  ])
+}
+
+fn view_scene_controls(
+  scene: Scene,
+  handlers: Handlers(message),
+) -> Element(message) {
+  html.div([attribute.class("controls")], [
+    html.button(
+      [
+        attribute.aria_label("Restart scene"),
+        event.on_click(handlers.on_restart),
+      ],
+      [icon.refresh([])],
+    ),
+
+    html.button(
+      [
+        attribute.aria_label("Jump to start"),
+        event.on_click(handlers.on_jump(-scene.step)),
+      ],
+      [icon.chevron_double_left([])],
+    ),
+
+    html.button(
+      [
+        attribute.aria_label("Previous step"),
+        event.on_click(handlers.on_step_backward),
+      ],
+      [icon.chevron_left([])],
+    ),
+
+    html.p([attribute.class("step-count")], [
+      html.text(int.to_string(scene.step)),
+      html.text("/"),
+      html.text(int.to_string(scene.step_count)),
+    ]),
+
+    html.button(
+      [
+        attribute.class("next"),
+        attribute.aria_label("Next step"),
+        event.on_click(handlers.on_step_forward),
+      ],
+      [icon.chevron_right([])],
+    ),
+
+    html.button(
+      [
+        attribute.aria_label("Jump to end"),
+        event.on_click(handlers.on_jump(scene.step_count - scene.step)),
+      ],
+      [icon.chevron_double_right([])],
+    ),
   ])
 }
 
@@ -370,24 +420,17 @@ fn view_scene_renderer(
   scene: Scene,
   handle_scene_message: message,
 ) -> Element(message) {
+  let dimension_styles = case scene.computed_dimensions {
+    Some(#(width, height)) -> [
+      attribute.style("width", int.to_string(width) <> "px"),
+      attribute.style("height", int.to_string(height) <> "px"),
+    ]
+
+    None -> []
+  }
+
   element.fragment([
-    html.iframe([
-      attribute.class("scene-renderer"),
-
-      scene.computed_dimensions
-        |> option.map(pair.first)
-        |> option.map(fn(width) {
-          attribute.style("width", int.to_string(width) <> "px")
-        })
-        |> option.lazy_unwrap(attribute.none),
-
-      scene.computed_dimensions
-        |> option.map(pair.second)
-        |> option.map(fn(height) {
-          attribute.style("height", int.to_string(height) <> "px")
-        })
-        |> option.lazy_unwrap(attribute.none),
-    ]),
+    html.iframe([attribute.class("scene-renderer"), ..dimension_styles]),
 
     portal.to("iframe", [portal.root(portal.Relative)], [
       simulate.view(scene.simulation)

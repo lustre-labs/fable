@@ -35,7 +35,7 @@ pub fn new(name: String, chapters: List(Chapter)) -> Book {
 
   let chapters =
     list.fold(chapters, dict.new(), fn(acc, chapter) {
-      use <- bool.guard(dict.size(chapter.stories) == 0, acc)
+      use <- bool.guard(dict.is_empty(chapter.stories), acc)
 
       dict.insert(acc, justin.kebab_case(chapter.name), chapter)
     })
@@ -47,7 +47,7 @@ pub fn chapter(name: String, stories: List(Story)) -> Chapter {
   let order = list.map(stories, fn(story) { story.slug })
   let stories =
     list.fold(stories, dict.new(), fn(acc, story) {
-      use <- bool.guard(dict.size(story.scenes) == 0, acc)
+      use <- bool.guard(dict.is_empty(story.scenes), acc)
 
       dict.insert(acc, story.slug, story)
     })
@@ -61,15 +61,21 @@ pub fn app() -> App(Book, Model, Message) {
 
 // QUERIES ---------------------------------------------------------------------
 
+fn find_chapter(
+  chapters: Dict(String, Chapter),
+  chapter: String,
+) -> Result(Chapter, Nil) {
+  dict.get(chapters, chapter)
+}
+
 fn find_story(
   chapters: Dict(String, Chapter),
   chapter: String,
   story: String,
-) -> Result(Story, Nil) {
-  case dict.get(chapters, chapter) {
-    Ok(chapter) -> dict.get(chapter.stories, story)
-    Error(_) -> Error(Nil)
-  }
+) -> Result(#(Chapter, Story), Nil) {
+  use chapter <- result.try(find_chapter(chapters, chapter))
+  use story <- result.try(dict.get(chapter.stories, story))
+  Ok(#(chapter, story))
 }
 
 fn find_scene(
@@ -78,10 +84,8 @@ fn find_scene(
   story: String,
   scene: Int,
 ) -> Result(Scene, Nil) {
-  case find_story(chapters, chapter, story) {
-    Ok(story) -> story.start(story, scene)
-    Error(_) -> Error(Nil)
-  }
+  use #(_, story) <- result.try(find_story(chapters, chapter, story))
+  story.start(story, scene)
 }
 
 // MODEL -----------------------------------------------------------------------
@@ -101,21 +105,15 @@ fn init(book: Book) -> #(Model, Effect(Message)) {
 
   let route = case route.from_uri(here) {
     Ok(SceneSelect(chapter:, story:) as route) -> {
-      let story =
-        book.chapters
-        |> dict.get(chapter)
-        |> result.try(fn(chapter) { dict.get(chapter.stories, story) })
+      case find_story(book.chapters, chapter, story) {
+        Ok(#(_chapter, story)) -> {
+          case dict.size(story.scenes) {
+            1 -> SceneDisplay(chapter:, story: story.slug, scene: 0)
+            _ -> route
+          }
+        }
 
-      let scenes =
-        story
-        |> result.map(fn(story) { dict.size(story.scenes) })
-        |> result.unwrap(0)
-
-      case story {
-        Ok(story) if scenes == 1 ->
-          SceneDisplay(chapter:, story: story.slug, scene: 0)
-
-        Ok(_) | Error(_) -> route
+        Error(_) -> route
       }
     }
 
@@ -126,10 +124,7 @@ fn init(book: Book) -> #(Model, Effect(Message)) {
 
   let scene = case route {
     SceneDisplay(chapter:, story:, scene:) ->
-      book.chapters
-      |> dict.get(chapter)
-      |> result.try(fn(chapter) { dict.get(chapter.stories, story) })
-      |> result.try(story.start(_, scene))
+      find_scene(book.chapters, chapter, story, scene)
       |> option.from_result
 
     _ -> None
@@ -199,7 +194,7 @@ fn update(model: Model, message: Message) -> #(Model, Effect(Message)) {
 
         SceneSelect(chapter:, story:) ->
           case find_story(model.chapters, chapter, story) {
-            Ok(story) -> #(
+            Ok(#(_chapter, story)) -> #(
               Model(..model, route:, scene: None),
               route.push(SceneDisplay(chapter:, story: story.slug, scene: 0)),
             )
@@ -270,12 +265,14 @@ fn view(model: Model) -> Element(Message) {
     view_sidebar(model.name, model.route, model.order, model.chapters),
 
     case model.route {
-      SceneSelect(chapter:, story:) | SceneDisplay(chapter:, story:, ..) ->
+      SceneSelect(chapter:, story:) | SceneDisplay(chapter:, story:, ..) -> {
         case find_story(model.chapters, chapter, story) {
-          Ok(story) -> story.view(chapter, story, model.scene, story_handlers)
+          Ok(#(chapter, story)) ->
+            story.view(story, chapter.name, model.scene, story_handlers)
 
           Error(_) -> element.none()
         }
+      }
 
       _ -> element.none()
     },
@@ -290,48 +287,45 @@ fn view_sidebar(
 ) -> Element(Message) {
   html.section([attribute.class("sidebar")], [
     html.h1([], [html.text(name)]),
-    element.fragment(
-      list.filter_map(order, view_sidebar_chapter(_, chapters, route)),
-    ),
+    html.input([
+      attribute.type_("search"),
+      attribute.aria_label("Search or filter stories"),
+      attribute.placeholder("Search / filter"),
+    ]),
+    element.fragment({
+      use slug <- list.filter_map(order)
+      use chapter <- result.map(dict.get(chapters, slug))
+      view_sidebar_chapter(slug, chapter, route)
+    }),
   ])
 }
 
 fn view_sidebar_chapter(
   key: String,
-  chapters: Dict(String, Chapter),
-  route: Route,
-) -> Result(Element(Message), Nil) {
-  use chapter <- result.map(dict.get(chapters, key))
-
-  html.nav([], [
-    html.h2([], [html.text(chapter.name)]),
-    html.ul(
-      [],
-      list.filter_map(chapter.order, view_sidebar_story(_, key, chapter, route)),
-    ),
-  ])
-}
-
-fn view_sidebar_story(
-  story: String,
-  key: String,
   chapter: Chapter,
   route: Route,
-) -> Result(Element(Message), Nil) {
-  use story <- result.map(dict.get(chapter.stories, story))
-  let is_active = case route {
-    SceneSelect(chapter: c, story: s)
-    | SceneDisplay(chapter: c, story: s, ..) -> c == key && s == story.slug
-    _ -> False
-  }
+) -> Element(Message) {
+  html.nav([], [
+    html.h2([], [html.text(chapter.name)]),
+    html.ul([], {
+      use slug <- list.filter_map(chapter.order)
+      use story <- result.map(dict.get(chapter.stories, slug))
 
-  html.li([], [
-    html.a(
-      [
-        route.href(SceneSelect(chapter: key, story: story.slug)),
-        attribute.classes([#("active", is_active)]),
-      ],
-      [html.text(story.name)],
-    ),
+      let is_active = case route {
+        SceneSelect(chapter: c, story: s)
+        | SceneDisplay(chapter: c, story: s, ..) -> c == key && s == story.slug
+        _ -> False
+      }
+
+      html.li([], [
+        html.a(
+          [
+            route.href(SceneSelect(chapter: key, story: story.slug)),
+            attribute.classes([#("active", is_active)]),
+          ],
+          [html.text(story.name)],
+        ),
+      ])
+    }),
   ])
 }

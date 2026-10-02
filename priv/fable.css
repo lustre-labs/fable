@@ -88,6 +88,8 @@
   --size-gap: 0.25rem;
   --size-radius: 4px;
   --size-text: 1rem;
+  --size-paperclip-width: 20px;
+  --size-paperclip-height: 56px;
 }
 
 :host {
@@ -188,41 +190,84 @@ svg.lucide {
 }
 
 .scene {
-  padding: calc(var(--size-gap) * 4);
-  padding-inline-start: 0;
+  position: relative;
+  padding: calc(var(--size-gap) * 6);
+  padding-inline-start: calc(var(--size-gap) * 8);
+  margin: calc(var(--size-gap) * 10) calc(var(--size-gap) * 6) calc(var(--size-gap) * 6);
+
   display: grid;
   grid-template-rows: auto 1fr;
   gap: calc(var(--size-gap) * 2);
 
-  & .controls {
+  border: 1px solid var(--colour-blue-200);
+
+  /* pink line on the left side of the page */
+  background: linear-gradient(to right,
+    transparent calc(var(--size-gap) * 5),
+    color-mix(in srgb, var(--colour-pink-400) 31%, transparent) calc(var(--size-gap) * 5) calc(var(--size-gap) * 5.25),
+    transparent calc(var(--size-gap) * 5.25)),
+    var(--colour-grey-050);
+
+  /* Paper stack */
+  &::before {
+    content: '';
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+
+    background: var(--colour-blue-050);
+    border: 1px solid var(--colour-blue-400);
+    transform: rotate(1.5deg);
+
+    box-shadow:
+      calc(var(--size-gap) * 2) calc(var(--size-gap) * 2) 0 var(--colour-blue-200),
+      calc(var(--size-gap) * 2.75) calc(var(--size-gap) * 3.25) 0 var(--colour-blue-400),
+      0 var(--size-gap) calc(var(--size-gap) * 3) color-mix(in srgb, var(--colour-blue-900) 13%, transparent);
+  }
+
+  /* Paper clip */
+  &::after {
+    content: '';
+    pointer-events: none;
+    position: absolute;
+    top: 0;
+    left: 10%;
+    width: var(--size-paperclip-width);
+    height: var(--size-paperclip-height);
+    border: 3px solid var(--colour-blue-400);
+    border-radius: 9999px;
+    transform: translateY(-50%) rotate(14deg);
+  }
+
+  .controls {
     display: flex;
     align-items: center;
     justify-content: end;
     gap: var(--size-gap);
 
-    & button {
+    button {
       aspect-ratio: 1 / 1;
       border-radius: var(--size-radius);
-      background: var(--colour-grey-100);
+      background: var(--colour-blue-100);
       padding: 2px;
     }
   }
 
-  & .step-count {
+  .step-count {
+    color: var(--colour-blue-900);
     font-variant-numeric: tabular-nums;
   }
 
-  & .inner {
-    background-color: white;
-    border-radius: calc(var(--size-radius) * 4);
-    border: 1px solid var(--colour-grey-100);
+  .inner {
+    border: 1.5px dashed var(--colour-blue-200);
     display: flex;
     justify-content: center;
     align-items: center;
     height: 100%;
   }
 
-  & iframe {
+  iframe {
     width: 100%;
     height: 100%;
   }

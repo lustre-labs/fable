@@ -13,41 +13,41 @@ import lustre/portal
 // TYPES -----------------------------------------------------------------------
 
 ///
-/// 
+///
 pub type Book =
   book.Book
 
 ///
-/// 
+///
 pub type Chapter =
   book.Chapter
 
 ///
-/// 
+///
 pub type Story =
   story.Story
 
 ///
-/// 
+///
 pub type Scene(arguments, model, message) =
   story.SceneConfig(arguments, model, message)
 
 // CONSTRUCTORS ----------------------------------------------------------------
 
 ///
-/// 
+///
 pub fn book(name name: String, chapters chapters: List(Chapter)) -> Book {
   book.new(name, chapters)
 }
 
 ///
-/// 
+///
 pub fn chapter(name name: String, stories stories: List(Story)) -> Chapter {
   book.chapter(name, stories)
 }
 
 ///
-/// 
+///
 pub fn story(
   name name: String,
   template simulation: App(arguments, model, message),
@@ -57,7 +57,7 @@ pub fn story(
 }
 
 ///
-/// 
+///
 pub fn static_story(
   name name: String,
   view view: fn(model) -> Element(message),
@@ -71,7 +71,7 @@ pub fn static_story(
 }
 
 ///
-/// 
+///
 pub fn scene(
   name name: String,
   init arguments: arguments,
@@ -82,7 +82,7 @@ pub fn scene(
 // BUILDERS --------------------------------------------------------------------
 
 ///
-/// 
+///
 pub fn default_step(
   scene: Scene(arguments, model, message),
   step: Int,
@@ -91,7 +91,7 @@ pub fn default_step(
 }
 
 ///
-/// 
+///
 pub fn simulate(
   scene: Scene(arguments, model, message),
   setup: fn(Simulation(model, message)) -> Simulation(model, message),
@@ -102,7 +102,7 @@ pub fn simulate(
 //
 
 ///
-/// 
+///
 pub fn start(book: Book) -> Result(Nil, lustre.Error) {
   use <- bool.guard(is_iframe(), Ok(Nil))
 

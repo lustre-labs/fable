@@ -13,9 +13,7 @@ import gleam/string
 import justin
 import lustre/attribute
 import lustre/dev/query
-import lustre/dev/simulate.{
-  type App, type Event, type Simulation, Dispatch, Event, Problem,
-}
+import lustre/dev/simulate.{type App, type Simulation, Dispatch, Event, Problem}
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html
@@ -198,7 +196,7 @@ fn view_story_sidebar(
   scene: Option(Scene),
   handlers: Handlers(message),
 ) -> Element(message) {
-  html.section([attribute.class("story-sidebar")], [
+  html.aside([attribute.class("story-sidebar")], [
     view_scene_select(chapter_name, story, scene),
 
     case scene {
@@ -218,8 +216,8 @@ fn view_scene_select(
   story: Story,
   scene: Option(Scene),
 ) -> Element(message) {
-  html.div([], [
-    html.h4([], [html.text("Scenes")]),
+  html.div([attribute.class("scene-select")], [
+    html.h2([], [html.text("Scenes")]),
     html.ul([], {
       let keys = dict.keys(story.scenes) |> list.sort(int.compare)
       use id <- list.filter_map(keys)
@@ -254,73 +252,38 @@ fn view_scene_history(
   let events = simulate.history(scene.simulation)
   use <- bool.lazy_guard(list.is_empty(events), element.none)
 
-  html.div([attribute.class("history")], [
-    html.h4([], [html.text("History")]),
-    html.ul([], [
-      view_scene_init_event(scene, handlers),
-      element.fragment(
-        list.index_map(events, fn(event, index) {
-          view_scene_event(scene, event, index + 1, handlers)
-        }),
-      ),
-    ]),
-  ])
-}
-
-fn view_scene_init_event(
-  scene: Scene,
-  handlers: Handlers(message),
-) -> Element(message) {
-  let is_active = scene.step == 0
-  let class_list = [
-    #("event", True),
-    #("active", is_active),
-  ]
-
-  html.li([attribute.classes(class_list)], [
-    html.button([event.on_click(handlers.on_jump(-scene.step))], [
-      html.p([], [html.text("Init")]),
-      html.pre([], [html.text(string.inspect(scene.arguments))]),
-    ]),
-  ])
-}
-
-fn view_scene_event(
-  scene: Scene,
-  event: Event(_),
-  step: Int,
-  handlers: Handlers(message),
-) -> Element(message) {
-  let is_active = scene.step == step
-  let class_list = [
-    #("event", True),
-    #("active", is_active),
-  ]
-
-  html.li([attribute.classes(class_list)], [
-    html.button(
-      [event.on_click(handlers.on_jump(step - scene.step))],
+  let entries = [
+    #("Init", Some(string.inspect(scene.arguments))),
+    ..list.map(events, fn(event) {
       case event {
-        Dispatch(..) -> [
-          html.p([], [html.text("Dispatch")]),
-        ]
+        Dispatch(..) -> #("Dispatch", None)
+        Event(target:, ..) -> #("Event", Some(query.to_readable_string(target)))
+        Problem(..) -> #("Problem", None)
+      }
+    })
+  ]
 
-        Event(target:, ..) -> [
-          html.p([], [html.text("Event")]),
-          html.p([], [html.text(query.to_readable_string(target))]),
-        ]
+  html.div([attribute.class("history")], [
+    html.h2([], [html.text("History")]),
+    html.ul([], {
+      use #(title, detail), step <- list.index_map(entries)
 
-        Problem(..) -> [
-          html.p([], [html.text("Problem")]),
-        ]
-      },
-    ),
+      html.li([attribute.classes([#("active", scene.step == step)])], [
+        html.button([event.on_click(handlers.on_jump(step - scene.step))], [
+          html.p([], [html.text(title)]),
+          case detail {
+            Some(detail) -> html.pre([], [html.text(detail)])
+            None -> element.none()
+          },
+        ]),
+      ])
+    }),
   ])
 }
 
 fn view_scene_model(scene: Scene) -> Element(message) {
   html.div([attribute.class("model")], [
-    html.h4([], [html.text("Model")]),
+    html.h2([], [html.text("Model")]),
     html.pre([], [
       scene.simulation
       |> simulate.model

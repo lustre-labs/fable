@@ -285,7 +285,7 @@ fn view_sidebar(
   order: List(String),
   chapters: Dict(String, Chapter),
 ) -> Element(Message) {
-  html.section([attribute.class("sidebar")], [
+  html.aside([attribute.class("sidebar")], [
     html.h1([], [html.text(name)]),
     html.input([
       attribute.type_("search"),

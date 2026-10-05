@@ -4,6 +4,7 @@ import fable/internal/dom
 import fable/internal/fuzzy
 import fable/internal/route.{type Route, Index, SceneDisplay, SceneSelect}
 import fable/internal/story.{type Scene, type Story}
+import fable/internal/theme
 import gleam/bool
 import gleam/dict.{type Dict}
 import gleam/dynamic.{type Dynamic}
@@ -112,6 +113,8 @@ pub opaque type Model {
     route: Route,
     scene: Option(Scene),
     search: String,
+    theme: theme.Preference,
+    system_scheme: theme.ColourScheme,
   )
 }
 
@@ -153,6 +156,8 @@ fn init(book: Book) -> #(Model, Effect(Message)) {
       route:,
       scene:,
       search: "",
+      theme: theme.System,
+      system_scheme: theme.Light,
     )
 
   let effect =
@@ -163,6 +168,8 @@ fn init(book: Book) -> #(Model, Effect(Message)) {
       },
 
       init_router(),
+      theme.load(ThemePreferenceLoaded),
+      theme.subscribe(SystemColourSchemeChanged),
       dom.add_global_event_listener("keydown", search_shortcut_decoder()),
     ])
 
@@ -190,6 +197,9 @@ fn do_init_router(_root: Dynamic, _dispatch: fn(Uri) -> Nil) -> Nil {
 pub opaque type Message {
   SceneProducedDiscardableMessage
   UserChangedSearch(String)
+  UserToggledDarkMode(Bool)
+  ThemePreferenceLoaded(theme.Preference)
+  SystemColourSchemeChanged(theme.ColourScheme)
   UserPressedSearchShortcut
   UserSubmittedSearch
   UserClickedExternalLink(to: Uri)
@@ -205,6 +215,22 @@ fn update(model: Model, message: Message) -> #(Model, Effect(Message)) {
     SceneProducedDiscardableMessage -> #(model, effect.none())
 
     UserChangedSearch(search) -> #(Model(..model, search:), effect.none())
+
+    UserToggledDarkMode(dark) -> {
+      let colour_scheme = theme.from_dark(dark)
+      let preference = theme.select(colour_scheme, model.system_scheme)
+      let effect =
+        effect.batch([theme.apply(preference), theme.persist(preference)])
+      #(Model(..model, theme: preference), effect)
+    }
+
+    ThemePreferenceLoaded(preference) -> {
+      #(Model(..model, theme: preference), theme.apply(preference))
+    }
+
+    SystemColourSchemeChanged(system_scheme) -> {
+      #(Model(..model, system_scheme:), effect.none())
+    }
 
     UserPressedSearchShortcut -> #(model, dom.focus("story-search"))
 
@@ -302,13 +328,7 @@ const story_handlers = story.Handlers(
 
 fn view(model: Model) -> Element(Message) {
   element.fragment([
-    view_sidebar(
-      model.name,
-      model.route,
-      model.order,
-      model.chapters,
-      model.search,
-    ),
+    view_sidebar(model),
 
     case model.route {
       SceneSelect(chapter:, story:) | SceneDisplay(chapter:, story:, ..) -> {
@@ -325,15 +345,9 @@ fn view(model: Model) -> Element(Message) {
   ])
 }
 
-fn view_sidebar(
-  name: String,
-  route: Route,
-  order: List(String),
-  chapters: Dict(String, Chapter),
-  search: String,
-) -> Element(Message) {
+fn view_sidebar(model: Model) -> Element(Message) {
   html.aside([attribute.class("sidebar")], [
-    html.h1([], [html.text(name)]),
+    html.h1([], [html.text(model.name)]),
     html.label([attribute.class("search")], [
       html.input([
         attribute.id("story-search"),
@@ -341,7 +355,7 @@ fn view_sidebar(
         attribute.aria_label("Search or filter stories"),
         attribute.aria_keyshortcuts("Control+k Meta+k"),
         attribute.placeholder("Search"),
-        attribute.value(search),
+        attribute.value(model.search),
         event.on_input(UserChangedSearch),
         event.advanced("keydown", submit_search_decoder()),
       ]),
@@ -349,11 +363,23 @@ fn view_sidebar(
         html.text("⌘ K"),
       ]),
     ]),
-    element.fragment({
-      use slug <- list.filter_map(order)
-      use chapter <- result.map(dict.get(chapters, slug))
-      view_sidebar_chapter(slug, chapter, route, search)
+    html.div([attribute.class("chapters")], {
+      use slug <- list.filter_map(model.order)
+      use chapter <- result.map(dict.get(model.chapters, slug))
+      view_sidebar_chapter(slug, chapter, model.route, model.search)
     }),
+    html.div([attribute.class("theme-toggle")], [
+      html.input([
+        attribute.type_("checkbox"),
+        attribute.attribute("switch", ""),
+        attribute.role("switch"),
+        attribute.aria_label("Dark mode"),
+        attribute.checked(
+          theme.resolve(model.theme, model.system_scheme) == theme.Dark,
+        ),
+        event.on_check(UserToggledDarkMode),
+      ]),
+    ]),
   ])
 }
 

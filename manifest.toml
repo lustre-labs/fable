@@ -65,3 +65,4 @@ lustre_dev_tools = { version = ">= 2.4.0 and < 3.0.0" }
 lustre_portal = { version = ">= 1.0.0 and < 2.0.0" }
 modem = { version = ">= 2.0.0 and < 3.0.0" }
 pprint = { version = ">= 1.0.6 and < 2.0.0" }
+simplifile = { version = ">= 2.7.0 and < 3.0.0" }

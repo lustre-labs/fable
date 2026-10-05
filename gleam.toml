@@ -16,6 +16,7 @@ gerbil = "1.0.0-rc5"
 lustre_dev_tools = ">= 2.4.0 and < 3.0.0"
 gleam_community_maths = ">= 2.0.2 and < 3.0.0"
 gleam_time = ">= 1.11.0 and < 2.0.0"
+simplifile = ">= 2.7.0 and < 3.0.0"
 
 [tools.lustre.dev]
 watch = ["dev"]

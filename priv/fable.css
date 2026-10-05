@@ -232,9 +232,29 @@ input {
   }
 }
 
-:focus-visible {
+:focus-visible,
+label:focus-within {
   outline: calc(var(--size-gap) / 2) solid var(--colour-blue-600);
   outline-offset: var(--size-gap);
+}
+
+label input:focus-visible {
+  outline: none;
+}
+
+kbd {
+  padding: var(--size-gap) calc(var(--size-gap) * 1.5);
+  border: 1px solid var(--colour-blue-200);
+  border-radius: var(--size-radius);
+  background: var(--colour-blue-050);
+  color: var(--colour-blue-800);
+  font: inherit;
+  font-family: var(--font-sans);
+  font-weight: 500;
+  line-height: 1;
+  text-box: trim-both cap alphabetic;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 /* SIDEBAR ------------------------------------------------------------------ */
@@ -247,6 +267,25 @@ input {
   border-radius: var(--size-radius);
   background: var(--colour-blue-100);
   font-size: var(--size-text-small);
+
+  .search {
+    display: flex;
+    align-items: center;
+    gap: var(--size-gap);
+    border: 1px solid var(--colour-blue-200);
+    border-radius: var(--size-radius);
+    background: var(--colour-grey-050);
+
+    input {
+      border: none;
+      background: transparent;
+    }
+
+    kbd {
+      flex-shrink: 0;
+      margin-right: calc(var(--size-gap) * 2);
+    }
+  }
 
   h2:before {
     counter-increment: chapter;

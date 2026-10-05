@@ -1,10 +1,13 @@
 // IMPORTS ---------------------------------------------------------------------
 
+import fable/internal/dom
+import fable/internal/fuzzy
 import fable/internal/route.{type Route, Index, SceneDisplay, SceneSelect}
 import fable/internal/story.{type Scene, type Story}
 import gleam/bool
 import gleam/dict.{type Dict}
 import gleam/dynamic.{type Dynamic}
+import gleam/dynamic/decode.{type Decoder}
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
@@ -15,6 +18,7 @@ import lustre/attribute
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html
+import lustre/event
 import modem
 
 // TYPES -----------------------------------------------------------------------
@@ -88,6 +92,16 @@ fn find_scene(
   story.start(story, scene)
 }
 
+fn matching_stories(chapter: Chapter, search: String) -> List(Story) {
+  use slug <- list.filter_map(chapter.order)
+  use story <- result.try(dict.get(chapter.stories, slug))
+
+  case fuzzy.matches(story.name, search) {
+    True -> Ok(story)
+    False -> Error(Nil)
+  }
+}
+
 // MODEL -----------------------------------------------------------------------
 
 pub opaque type Model {
@@ -97,6 +111,7 @@ pub opaque type Model {
     chapters: Dict(String, Chapter),
     route: Route,
     scene: Option(Scene),
+    search: String,
   )
 }
 
@@ -137,6 +152,7 @@ fn init(book: Book) -> #(Model, Effect(Message)) {
       chapters: book.chapters,
       route:,
       scene:,
+      search: "",
     )
 
   let effect =
@@ -147,6 +163,7 @@ fn init(book: Book) -> #(Model, Effect(Message)) {
       },
 
       init_router(),
+      dom.add_global_event_listener("keydown", search_shortcut()),
     ])
 
   #(model, effect)
@@ -172,6 +189,9 @@ fn do_init_router(_root: Dynamic, _dispatch: fn(Uri) -> Nil) -> Nil {
 
 pub opaque type Message {
   SceneProducedDiscardableMessage
+  UserChangedSearch(String)
+  UserPressedSearchShortcut
+  UserSubmittedSearch
   UserClickedExternalLink(to: Uri)
   UserClickedInternalLink(route: Route)
   UserClickedJump(steps: Int)
@@ -183,6 +203,26 @@ pub opaque type Message {
 fn update(model: Model, message: Message) -> #(Model, Effect(Message)) {
   case message {
     SceneProducedDiscardableMessage -> #(model, effect.none())
+
+    UserChangedSearch(search) -> #(Model(..model, search:), effect.none())
+
+    UserPressedSearchShortcut -> #(model, dom.focus("story-search"))
+
+    UserSubmittedSearch -> {
+      let first_match = {
+        use slug <- list.find_map(model.order)
+        use chapter <- result.try(dict.get(model.chapters, slug))
+        use story <- result.try(
+          list.first(matching_stories(chapter, model.search)),
+        )
+        Ok(SceneDisplay(chapter: slug, story: story.slug, scene: 0))
+      }
+
+      case first_match {
+        Ok(route) if route != model.route -> #(model, route.push(route))
+        _ -> #(model, effect.none())
+      }
+    }
 
     UserClickedExternalLink(to: uri) -> #(model, modem.load(uri))
 
@@ -252,6 +292,30 @@ fn update(model: Model, message: Message) -> #(Model, Effect(Message)) {
 
 // VIEW ------------------------------------------------------------------------
 
+fn search_shortcut() -> Decoder(event.Handler(Message)) {
+  use key <- decode.field("key", decode.string)
+  use ctrl <- decode.field("ctrlKey", decode.bool)
+  use meta <- decode.field("metaKey", decode.bool)
+
+  let handler = event.handler(UserPressedSearchShortcut, True, False)
+
+  case key == "k" && { ctrl || meta } {
+    True -> decode.success(handler)
+    False -> decode.failure(handler, "search shortcut")
+  }
+}
+
+fn submit_search() -> Decoder(event.Handler(Message)) {
+  use key <- decode.field("key", decode.string)
+
+  let handler = event.handler(UserSubmittedSearch, True, False)
+
+  case key == "Enter" {
+    True -> decode.success(handler)
+    False -> decode.failure(handler, "search submission")
+  }
+}
+
 const story_handlers = story.Handlers(
   on_scene_message: SceneProducedDiscardableMessage,
   on_restart: UserClickedRestart,
@@ -262,7 +326,13 @@ const story_handlers = story.Handlers(
 
 fn view(model: Model) -> Element(Message) {
   element.fragment([
-    view_sidebar(model.name, model.route, model.order, model.chapters),
+    view_sidebar(
+      model.name,
+      model.route,
+      model.order,
+      model.chapters,
+      model.search,
+    ),
 
     case model.route {
       SceneSelect(chapter:, story:) | SceneDisplay(chapter:, story:, ..) -> {
@@ -284,18 +354,29 @@ fn view_sidebar(
   route: Route,
   order: List(String),
   chapters: Dict(String, Chapter),
+  search: String,
 ) -> Element(Message) {
   html.aside([attribute.class("sidebar")], [
     html.h1([], [html.text(name)]),
-    html.input([
-      attribute.type_("search"),
-      attribute.aria_label("Search or filter stories"),
-      attribute.placeholder("Search / filter"),
+    html.label([attribute.class("search")], [
+      html.input([
+        attribute.id("story-search"),
+        attribute.type_("search"),
+        attribute.aria_label("Search or filter stories"),
+        attribute.aria_keyshortcuts("Control+k Meta+k"),
+        attribute.placeholder("Search"),
+        attribute.value(search),
+        event.on_input(UserChangedSearch),
+        event.advanced("keydown", submit_search()),
+      ]),
+      html.kbd([attribute.aria_hidden(True)], [
+        html.text("⌘ K"),
+      ]),
     ]),
     element.fragment({
       use slug <- list.filter_map(order)
       use chapter <- result.map(dict.get(chapters, slug))
-      view_sidebar_chapter(slug, chapter, route)
+      view_sidebar_chapter(slug, chapter, route, search)
     }),
   ])
 }
@@ -304,12 +385,16 @@ fn view_sidebar_chapter(
   key: String,
   chapter: Chapter,
   route: Route,
+  search: String,
 ) -> Element(Message) {
+  let stories = matching_stories(chapter, search)
+
+  use <- bool.guard(list.is_empty(stories), element.none())
+
   html.nav([], [
     html.h2([], [html.text(chapter.name)]),
     html.ul([], {
-      use slug <- list.filter_map(chapter.order)
-      use story <- result.map(dict.get(chapter.stories, slug))
+      use story <- list.map(stories)
 
       let is_active = case route {
         SceneSelect(chapter: c, story: s)

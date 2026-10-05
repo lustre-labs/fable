@@ -9,7 +9,7 @@ pub fn focus(id: String) -> Effect(message) {
   do_focus(root, id)
 }
 
-@external(javascript, "./effect.ffi.mjs", "focus")
+@external(javascript, "./dom.ffi.mjs", "focus")
 fn do_focus(root: Dynamic, id: String) -> Nil
 
 ///
@@ -28,14 +28,14 @@ pub fn add_global_event_listener(
   }
 }
 
-@external(javascript, "./effect.ffi.mjs", "addGlobalEventListener")
+@external(javascript, "./dom.ffi.mjs", "addGlobalEventListener")
 fn do_add_global_event_listener(
   root: Dynamic,
   name: String,
   handler: fn(Dynamic) -> Nil,
 ) -> Nil
 
-@external(javascript, "./effect.ffi.mjs", "handleEvent")
+@external(javascript, "./dom.ffi.mjs", "handleEvent")
 fn handle_event(
   event: Dynamic,
   prevent_default: Bool,

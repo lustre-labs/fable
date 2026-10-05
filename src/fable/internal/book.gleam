@@ -163,7 +163,7 @@ fn init(book: Book) -> #(Model, Effect(Message)) {
       },
 
       init_router(),
-      dom.add_global_event_listener("keydown", search_shortcut()),
+      dom.add_global_event_listener("keydown", search_shortcut_decoder()),
     ])
 
   #(model, effect)
@@ -292,30 +292,6 @@ fn update(model: Model, message: Message) -> #(Model, Effect(Message)) {
 
 // VIEW ------------------------------------------------------------------------
 
-fn search_shortcut() -> Decoder(event.Handler(Message)) {
-  use key <- decode.field("key", decode.string)
-  use ctrl <- decode.field("ctrlKey", decode.bool)
-  use meta <- decode.field("metaKey", decode.bool)
-
-  let handler = event.handler(UserPressedSearchShortcut, True, False)
-
-  case key == "k" && { ctrl || meta } {
-    True -> decode.success(handler)
-    False -> decode.failure(handler, "search shortcut")
-  }
-}
-
-fn submit_search() -> Decoder(event.Handler(Message)) {
-  use key <- decode.field("key", decode.string)
-
-  let handler = event.handler(UserSubmittedSearch, True, False)
-
-  case key == "Enter" {
-    True -> decode.success(handler)
-    False -> decode.failure(handler, "search submission")
-  }
-}
-
 const story_handlers = story.Handlers(
   on_scene_message: SceneProducedDiscardableMessage,
   on_restart: UserClickedRestart,
@@ -367,7 +343,7 @@ fn view_sidebar(
         attribute.placeholder("Search"),
         attribute.value(search),
         event.on_input(UserChangedSearch),
-        event.advanced("keydown", submit_search()),
+        event.advanced("keydown", submit_search_decoder()),
       ]),
       html.kbd([attribute.aria_hidden(True)], [
         html.text("⌘ K"),
@@ -413,4 +389,28 @@ fn view_sidebar_chapter(
       ])
     }),
   ])
+}
+
+fn search_shortcut_decoder() -> Decoder(event.Handler(Message)) {
+  use key <- decode.field("key", decode.string)
+  use ctrl <- decode.field("ctrlKey", decode.bool)
+  use meta <- decode.field("metaKey", decode.bool)
+
+  let handler = event.handler(UserPressedSearchShortcut, True, False)
+
+  case key == "k" && { ctrl || meta } {
+    True -> decode.success(handler)
+    False -> decode.failure(handler, "search shortcut")
+  }
+}
+
+fn submit_search_decoder() -> Decoder(event.Handler(Message)) {
+  use key <- decode.field("key", decode.string)
+
+  let handler = event.handler(UserSubmittedSearch, True, False)
+
+  case key == "Enter" {
+    True -> decode.success(handler)
+    False -> decode.failure(handler, "search submission")
+  }
 }

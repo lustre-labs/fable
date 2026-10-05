@@ -12,10 +12,10 @@ pub fn filter(candidates: List(String), query: String) -> List(String) {
 ///
 ///
 pub fn matches(candidate: String, query: String) -> Bool {
-  match_characters(normalize(candidate), normalize(query))
+  match_characters(normalise(candidate), normalise(query))
 }
 
-fn normalize(text: String) -> List(Int) {
+fn normalise(text: String) -> List(Int) {
   text
   |> string.lowercase
   |> string.to_utf_codepoints

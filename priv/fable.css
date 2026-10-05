@@ -89,6 +89,20 @@
   --colour-grey-900: #1c1916;
   --colour-grey-950: #110f0e;
 
+  /* Shared theme colours */
+  --colour-border: light-dark(var(--colour-blue-200), var(--colour-blue-800));
+  --colour-surface: light-dark(var(--colour-grey-050), var(--colour-grey-900));
+  --colour-surface-blue: light-dark(var(--colour-blue-050), var(--colour-blue-950));
+  --colour-text-muted: light-dark(var(--colour-grey-600), var(--colour-grey-400));
+  --colour-text-control: light-dark(var(--colour-blue-800), var(--colour-blue-100));
+  --colour-accent: light-dark(var(--colour-blue-600), var(--colour-blue-400));
+  --colour-on-accent: light-dark(var(--colour-grey-050), var(--colour-blue-950));
+  --colour-shadow: light-dark(var(--colour-blue-900), var(--colour-blue-950));
+  --colour-note-blue: light-dark(
+    var(--colour-blue-050),
+    color-mix(in srgb, var(--colour-blue-200) 30%, var(--colour-blue-950))
+  );
+
   --size-gap: 0.25rem;
   --size-radius: 4px;
   --size-text: 1rem;
@@ -106,8 +120,8 @@
 }
 
 :host {
-  color: var(--colour-blue-900);
-  background-color: light-dark(var(--colour-grey-050), var(--colour-grey-900));
+  color: light-dark(var(--colour-blue-900), var(--colour-blue-100));
+  background-color: light-dark(var(--colour-grey-050), var(--colour-grey-950));
   margin: 0;
   font-size: var(--size-text);
   font-family: var(--font-mono);
@@ -190,7 +204,7 @@ h2 {
 
   small {
     display: block;
-    color: var(--colour-grey-600);
+    color: var(--colour-text-muted);
     font-size: var(--size-text-small);
     font-weight: normal;
     text-transform: lowercase;
@@ -225,20 +239,21 @@ input {
   width: 100%;
   min-width: 0;
   padding: calc(var(--size-gap) * 2);
-  border: 1px solid var(--colour-blue-200);
+  border: 1px solid var(--colour-border);
   border-radius: var(--size-radius);
-  background: var(--colour-grey-050);
-  color: var(--colour-blue-800);
+  background: var(--colour-surface);
+  color: var(--colour-text-control);
   font: inherit;
 
   &::placeholder {
-    color: var(--colour-grey-600);
+    color: var(--colour-text-muted);
   }
 }
 
 :focus-visible,
 label:focus-within {
-  outline: calc(var(--size-gap) / 2) solid var(--colour-blue-600);
+  outline: calc(var(--size-gap) / 2) solid
+    light-dark(var(--colour-blue-600), var(--colour-blue-200));
   outline-offset: var(--size-gap);
 }
 
@@ -248,10 +263,10 @@ label input:focus-visible {
 
 kbd {
   padding: var(--size-gap) calc(var(--size-gap) * 1.5);
-  border: 1px solid var(--colour-blue-200);
+  border: 1px solid var(--colour-border);
   border-radius: var(--size-radius);
-  background: var(--colour-blue-050);
-  color: var(--colour-blue-800);
+  background: var(--colour-surface-blue);
+  color: var(--colour-text-control);
   font: inherit;
   font-family: var(--font-sans);
   font-weight: 500;
@@ -267,18 +282,18 @@ kbd {
   counter-reset: chapter;
   min-width: 0;
   padding: calc(var(--size-gap) * 3);
-  border: 1px solid var(--colour-blue-200);
+  border: 1px solid var(--colour-border);
   border-radius: var(--size-radius);
-  background: var(--colour-blue-100);
+  background: light-dark(var(--colour-blue-100), var(--colour-blue-950));
   font-size: var(--size-text-small);
 
   .search {
     display: flex;
     align-items: center;
     gap: var(--size-gap);
-    border: 1px solid var(--colour-blue-200);
+    border: 1px solid var(--colour-border);
     border-radius: var(--size-radius);
-    background: var(--colour-grey-050);
+    background: var(--colour-surface);
 
     input {
       border: none;
@@ -299,7 +314,7 @@ kbd {
   }
 
   ul {
-    border-left: 1px dashed var(--colour-blue-200);
+    border-left: 1px dashed var(--colour-border);
     padding-left: calc(var(--size-gap) * 2);
   }
 
@@ -309,12 +324,12 @@ kbd {
     border-radius: var(--size-radius);
 
     &.active {
-      background: var(--colour-blue-600);
-      color: var(--colour-grey-050);
+      background: var(--colour-accent);
+      color: var(--colour-on-accent);
     }
 
     &:hover:not(.active) {
-      background: var(--colour-blue-200);
+      background: light-dark(var(--colour-blue-200), var(--colour-blue-800));
     }
   }
 }
@@ -331,7 +346,7 @@ kbd {
     display: block;
     position: relative;
     padding: calc(var(--size-gap) * 3);
-    border: 1px solid var(--colour-blue-200);
+    border: 1px solid var(--colour-border);
     background:
       repeating-linear-gradient(
         to bottom,
@@ -339,15 +354,25 @@ kbd {
         color-mix(in srgb, var(--colour-blue-400) 15%, transparent)
           calc(var(--size-gap) * 5.75) calc(var(--size-gap) * 6)
       ),
-      var(--colour-blue-050);
+      var(--colour-note-blue);
     line-height: 1.2;
     box-shadow: 0 1px 2px
-      color-mix(in srgb, var(--colour-blue-900) 20%, transparent);
+      color-mix(
+        in srgb,
+        var(--colour-shadow) 20%,
+        transparent
+      );
 
     &.active {
-      border-color: var(--colour-orange-100);
-      background-color: var(--colour-orange-050);
-      color: var(--colour-blue-600);
+      border-color: light-dark(
+        var(--colour-orange-100),
+        color-mix(in srgb, var(--colour-orange-200) 50%, var(--colour-orange-950))
+      );
+      background-color: light-dark(
+        var(--colour-orange-050),
+        color-mix(in srgb, var(--colour-orange-200) 30%, var(--colour-orange-950))
+      );
+      color: light-dark(var(--colour-blue-600), var(--colour-orange-100));
     }
 
     &.active::before {
@@ -358,7 +383,11 @@ kbd {
       left: calc(var(--size-gap) * 3);
       width: calc(var(--size-gap) * 8);
       height: calc(var(--size-gap) * 2);
-      background: color-mix(in srgb, var(--colour-pink-200) 66%, transparent);
+      background: color-mix(
+          in srgb,
+          light-dark(var(--colour-pink-200), var(--colour-pink-400)) 66%,
+          transparent
+        );
       translate: 0 -50%;
     }
 
@@ -371,7 +400,7 @@ kbd {
 .history {
   ul {
     counter-reset: event -1;
-    border-top: 1px solid var(--colour-blue-200);
+    border-top: 1px solid var(--colour-border);
   }
 
   li {
@@ -384,10 +413,10 @@ kbd {
     width: 100%;
     padding: calc(var(--size-gap) * 3);
     border-left: 2px solid transparent;
-    border-bottom: 1px solid var(--colour-blue-200);
+    border-bottom: 1px solid var(--colour-border);
 
     &:hover {
-      background: var(--colour-blue-050);
+      background: var(--colour-surface-blue);
     }
 
     &::before {
@@ -395,13 +424,13 @@ kbd {
       top: calc(var(--size-gap) * 3);
       left: calc(var(--size-gap) * 3);
       content: counter(event, decimal-leading-zero);
-      color: var(--colour-grey-600);
+      color: var(--colour-text-muted);
     }
 
     .active & {
-      border-left-color: var(--colour-pink-600);
-      background: var(--colour-pink-050);
-      color: var(--colour-pink-600);
+      border-left-color: light-dark(var(--colour-pink-600), var(--colour-pink-400));
+      background: light-dark(var(--colour-pink-050), var(--colour-pink-950));
+      color: light-dark(var(--colour-pink-600), var(--colour-pink-400));
 
       &::before {
         color: inherit;
@@ -416,7 +445,7 @@ kbd {
 
   pre {
     margin-top: var(--size-gap);
-    color: var(--colour-grey-600);
+    color: var(--colour-text-muted);
     font-size: calc(var(--size-text) * 0.75);
   }
 }
@@ -424,8 +453,8 @@ kbd {
 .model {
   pre {
     padding: calc(var(--size-gap) * 3);
-    border-block: 1px solid var(--colour-blue-200);
-    background: var(--colour-blue-050);
+    border-block: 1px solid var(--colour-border);
+    background: var(--colour-note-blue);
     font-size: var(--size-text-small);
     line-height: 1.6;
   }
@@ -444,7 +473,7 @@ kbd {
   grid-template-rows: auto minmax(0, 1fr);
   gap: calc(var(--size-gap) * 2);
 
-  border: 1px solid var(--colour-blue-200);
+  border: 1px solid var(--colour-border);
 
   /* pink line on the left side of the page */
   background:
@@ -455,7 +484,7 @@ kbd {
         calc(var(--size-gap) * 5) calc(var(--size-gap) * 5.25),
       transparent calc(var(--size-gap) * 5.25)
     ),
-    var(--colour-grey-050);
+    var(--colour-surface);
 
   &::before,
   &::after {
@@ -469,17 +498,21 @@ kbd {
     inset: 0;
     z-index: -1;
 
-    background: var(--colour-blue-050);
+    background: var(--colour-surface-blue);
     border: 1px solid var(--colour-blue-400);
     transform: rotate(1.5deg);
 
     box-shadow:
       calc(var(--size-gap) * 2) calc(var(--size-gap) * 2) 0
-        var(--colour-blue-200),
+        light-dark(var(--colour-blue-200), var(--colour-blue-800)),
       calc(var(--size-gap) * 2.75) calc(var(--size-gap) * 3.25) 0
         var(--colour-blue-400),
       0 var(--size-gap) calc(var(--size-gap) * 3)
-        color-mix(in srgb, var(--colour-blue-900) 13%, transparent);
+        color-mix(
+          in srgb,
+          var(--colour-shadow) 13%,
+          transparent
+        );
   }
 
   /* Paper clip */
@@ -499,7 +532,7 @@ kbd {
     align-items: end;
     gap: calc(var(--size-gap) * 4);
     padding-bottom: calc(var(--size-gap) * 4);
-    border-bottom: 1px dashed var(--colour-blue-200);
+    border-bottom: 1px dashed var(--colour-border);
   }
 
   h2 {
@@ -520,16 +553,16 @@ kbd {
       place-items: center;
       aspect-ratio: 1 / 1;
       padding: var(--size-gap);
-      border: 1px solid var(--colour-blue-200);
+      border: 1px solid var(--colour-border);
       border-radius: var(--size-radius);
-      background: var(--colour-blue-050);
+      background: var(--colour-surface-blue);
       color: var(--colour-blue-400);
       line-height: normal;
 
       &.next {
-        border-color: var(--colour-blue-600);
-        background: var(--colour-blue-600);
-        color: var(--colour-grey-050);
+        border-color: var(--colour-accent);
+        background: var(--colour-accent);
+        color: var(--colour-on-accent);
       }
     }
   }
@@ -543,7 +576,7 @@ kbd {
   }
 
   .inner {
-    border: 1.5px dashed var(--colour-blue-200);
+    border: 1.5px dashed var(--colour-border);
     display: flex;
     justify-content: center;
     align-items: center;

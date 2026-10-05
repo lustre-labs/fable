@@ -164,7 +164,9 @@ svg.lucide {
 #app {
   display: grid;
   grid-template-columns: 20ch 30ch 1fr;
-  min-height: 100dvh;
+  grid-template-rows: minmax(0, 1fr);
+  height: 100dvh;
+  overflow: clip;
   padding: calc(var(--size-gap) * 4);
   gap: calc(var(--size-gap) * 4);
 }
@@ -200,6 +202,8 @@ h2 {
 aside {
   display: flex;
   flex-direction: column;
+  overflow: auto;
+  overscroll-behavior: contain;
   gap: calc(var(--size-gap) * 6);
 }
 
@@ -437,7 +441,7 @@ kbd {
   margin-top: calc(var(--size-gap) * 4);
 
   display: grid;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: auto minmax(0, 1fr);
   gap: calc(var(--size-gap) * 2);
 
   border: 1px solid var(--colour-blue-200);

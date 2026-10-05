@@ -197,11 +197,11 @@ fn do_init_router(_root: Dynamic, _dispatch: fn(Uri) -> Nil) -> Nil {
 pub opaque type Message {
   SceneProducedDiscardableMessage
   UserChangedSearch(String)
+  UserPressedSearchShortcut
+  UserSubmittedSearch
   UserToggledDarkMode(Bool)
   ThemePreferenceLoaded(theme.Preference)
   SystemColourSchemeChanged(theme.ColourScheme)
-  UserPressedSearchShortcut
-  UserSubmittedSearch
   UserClickedExternalLink(to: Uri)
   UserClickedInternalLink(route: Route)
   UserClickedJump(steps: Int)
@@ -215,22 +215,6 @@ fn update(model: Model, message: Message) -> #(Model, Effect(Message)) {
     SceneProducedDiscardableMessage -> #(model, effect.none())
 
     UserChangedSearch(search) -> #(Model(..model, search:), effect.none())
-
-    UserToggledDarkMode(dark) -> {
-      let colour_scheme = theme.from_dark(dark)
-      let preference = theme.select(colour_scheme, model.system_scheme)
-      let effect =
-        effect.batch([theme.apply(preference), theme.persist(preference)])
-      #(Model(..model, theme: preference), effect)
-    }
-
-    ThemePreferenceLoaded(preference) -> {
-      #(Model(..model, theme: preference), theme.apply(preference))
-    }
-
-    SystemColourSchemeChanged(system_scheme) -> {
-      #(Model(..model, system_scheme:), effect.none())
-    }
 
     UserPressedSearchShortcut -> #(model, dom.focus("story-search"))
 
@@ -248,6 +232,22 @@ fn update(model: Model, message: Message) -> #(Model, Effect(Message)) {
         Ok(route) if route != model.route -> #(model, route.push(route))
         _ -> #(model, effect.none())
       }
+    }
+
+    UserToggledDarkMode(dark) -> {
+      let colour_scheme = theme.from_dark(dark)
+      let preference = theme.select(colour_scheme, model.system_scheme)
+      let effect =
+        effect.batch([theme.apply(preference), theme.persist(preference)])
+      #(Model(..model, theme: preference), effect)
+    }
+
+    ThemePreferenceLoaded(preference) -> {
+      #(Model(..model, theme: preference), theme.apply(preference))
+    }
+
+    SystemColourSchemeChanged(system_scheme) -> {
+      #(Model(..model, system_scheme:), effect.none())
     }
 
     UserClickedExternalLink(to: uri) -> #(model, modem.load(uri))

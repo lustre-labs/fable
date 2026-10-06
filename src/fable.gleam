@@ -5,8 +5,8 @@ import fable/internal/story
 import gleam/bool
 import gleam/function
 import gleam/result
-import lustre
-import lustre/dev/simulate.{type App, type Simulation}
+import lustre.{type App}
+import lustre/dev/simulate.{type Simulation}
 import lustre/element.{type Element}
 import lustre/portal
 
@@ -78,7 +78,7 @@ pub fn static_story(
 ) -> Story {
   story.new(
     name,
-    simulate.simple(function.identity, fn(model, _) { model }, view),
+    lustre.simple(function.identity, fn(model, _) { model }, view),
     scenes,
   )
 }

@@ -11,9 +11,10 @@ import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
 import justin
+import lustre.{type App}
 import lustre/attribute
 import lustre/dev/query
-import lustre/dev/simulate.{type App, type Simulation, Dispatch, Event, Problem}
+import lustre/dev/simulate.{type Simulation, Dispatch, Event, Problem}
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html

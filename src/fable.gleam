@@ -13,7 +13,7 @@ import lustre/portal
 // TYPES -----------------------------------------------------------------------
 
 /// A [book](#book) contains all the configuration required to create a Fable
-/// application. They are made up of three important concepts: chapters, stories,
+/// application. They are made up of three important parts: chapters, stories,
 /// and scenes.
 /// 
 /// - [Chapters](#Chapter) are categories or groups of stories. You might have a
@@ -30,17 +30,28 @@ import lustre/portal
 pub type Book =
   book.Book
 
-///
+/// A [chapter](#chapter) is a high-level grouping of related [stories](#Story).
+/// You might have chapters to group all your chart views, form controls, or
+/// layout elements together.
 ///
 pub type Chapter =
   book.Chapter
 
-///
+/// A [story](#story) is a specific view or simulate Lustre application that you
+/// want to showcase or document using Fable. This might be the view function for
+/// a button in your design system, a simulation of your full application, or a
+/// small app written to demonstrate a particular feature or interaction.
 ///
 pub type Story =
   story.Story
 
-///
+/// A [scene](#scene) is a specific configuration of a [story](#Story). For example,
+/// you might write individual scenes to showcase the different variants of a
+/// button element.
+/// 
+/// Scenes can [simulate interactions](#simulate) using Lustre's simulation API.
+/// This lets you choreograph specific sequences of interactions and demonstrate
+/// how an element or application changes over time.
 ///
 pub type Scene(arguments, model, message) =
   story.SceneConfig(arguments, model, message)
@@ -85,8 +96,12 @@ pub fn static_story(
 
 /// Create a new scene for a [story](#story). The `name` of the scene is shown in
 /// the scene selection list and is helpful for identifying what each scene
-/// demonstrates. The `init` arguments are passed to the stories init function
-/// (or used as the model in a [static story](#static_story)) and are one way the
+/// demonstrates. The `init` arguments are passed to the story's init function
+/// (or used as the model in a [static story](#static_story)) and are used to
+/// provide different configurations of a story.
+/// 
+/// Scenes can also [simulate interactions](#simulate) using Lustre's simulation
+/// API.
 /// 
 pub fn scene(
   name name: String,
@@ -155,8 +170,19 @@ pub fn simulate(
 
 //
 
+/// Start the Fable application with the given book. Fable will mount the
+/// application onto the document's `<body>` element and remove any existing
+/// HTML on the page.
+/// 
+/// Because Fable is just a Lustre application, you can run it in the same way
+/// you would run your own applications. Typically this involves creating a 
+/// separate module in your project's `dev` directory (conventionally named
+/// `storybook.gleam`) and pointing your development server at it.
 ///
-///
+/// If you are using [Lustre's dev tools](https://lustre-dev-tools.hexdocs.pm)
+/// you can scaffold a new book by running `gleam run -m lustre/dev add fable`
+/// followed by `gleam run -m lustre/dev storybook`.
+/// 
 pub fn start(book: Book) -> Result(Nil, lustre.Error) {
   use <- bool.guard(is_iframe(), Ok(Nil))
 

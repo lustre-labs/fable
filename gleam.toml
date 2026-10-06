@@ -8,7 +8,7 @@ internal_modules = ["fable/internal/*"]
 gleam_json = ">= 3.0.1 and < 4.0.0"
 gleam_stdlib = ">= 0.60.0 and < 2.0.0"
 justin = ">= 1.0.1 and < 2.0.0"
-lustre = { git = "https://github.com/lustre-labs/lustre.git", ref = "main" }
+lustre = ">= 5.7.1 and < 6.0.0"
 lustre_portal = ">= 1.0.0 and < 2.0.0"
 modem = ">= 2.0.0 and < 3.0.0"
 pprint = ">= 1.0.6 and < 2.0.0"
@@ -17,8 +17,8 @@ pprint = ">= 1.0.6 and < 2.0.0"
 gerbil = "1.0.0"
 gleam_community_maths = ">= 2.0.2 and < 3.0.0"
 gleam_time = ">= 1.11.0 and < 2.0.0"
-simplifile = ">= 2.7.0 and < 3.0.0"
 lustre_dev_tools = ">= 2.4.0 and < 3.0.0"
+simplifile = ">= 2.7.0 and < 3.0.0"
 
 [tools.lustre.dev]
 watch = ["dev"]
